@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MMR Youth Vinayaka Chaturthi Celebrations</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -12,42 +12,55 @@
   </header>
 
   <main>
-    <section id="summary">
-      <h2>Total Summary</h2>
-      <p>Total Collected: ₹<span id="totalCollected">0</span></p>
-      <p>Total Expenses: ₹<span id="totalExpenses">0</span></p>
-      <p>Remaining Balance: ₹<span id="remainingBalance">0</span></p>
+    <section class="form-section">
+      <h2>Add Donor / Expense</h2>
+      <input type="text" id="name" placeholder="Name" />
+      <input type="number" id="amount" placeholder="Amount" />
+      <select id="type">
+        <option value="donation">Donation</option>
+        <option value="expense">Expense</option>
+      </select>
+      <input type="password" id="admin-password" placeholder="Admin Password" />
+      <button onclick="addEntry()">Add Entry</button>
     </section>
 
-    <section id="donations">
-      <h2>Donations</h2>
-      <ul id="donorList"></ul>
+    <section class="summary">
+      <h2>Summary</h2>
+      <p>Total Donations: ₹<span id="total-donations">0</span></p>
+      <p>Total Expenses: ₹<span id="total-expenses">0</span></p>
+      <p>Remaining Balance: ₹<span id="remaining-balance">0</span></p>
     </section>
 
-    <section id="expenses">
-      <h2>Expenses</h2>
-      <ul id="expenseList"></ul>
-    </section>
-
-    <section id="admin">
-      <h2>Admin Panel</h2>
-      <input type="password" id="adminPass" placeholder="Enter admin password" />
-      <div id="adminForms" style="display:none">
-        <div>
-          <h3>Add Donation</h3>
-          <input type="text" id="donorName" placeholder="Name" />
-          <input type="number" id="donorAmount" placeholder="Amount" />
-          <button onclick="addDonation()">Add</button>
-        </div>
-        <div>
-          <h3>Add Expense</h3>
-          <input type="text" id="expenseItem" placeholder="Item" />
-          <input type="number" id="expenseAmount" placeholder="Amount" />
-          <button onclick="addExpense()">Add</button>
-        </div>
+    <section class="lists">
+      <div>
+        <h3>Donor List</h3>
+        <ul id="donor-list"></ul>
+      </div>
+      <div>
+        <h3>Expense List</h3>
+        <ul id="expense-list"></ul>
       </div>
     </section>
   </main>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpTK6EM2jKQLgZBDkEGW90Bm8LvhAV58Y",
+      authDomain: "vinayaka-chaturthi-tracker.firebaseapp.com",
+      projectId: "vinayaka-chaturthi-tracker",
+      storageBucket: "vinayaka-chaturthi-tracker.appspot.com",
+      messagingSenderId: "74803522072",
+      appId: "1:74803522072:web:9b3572e9b1b46b936e716d",
+      measurementId: "G-7JC384C460"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    getAnalytics(app);
+  </script>
 
   <script src="script.js"></script>
 </body>
