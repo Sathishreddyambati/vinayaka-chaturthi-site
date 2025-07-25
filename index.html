@@ -3,43 +3,199 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MMR Youth Vinayaka Chaturthi Celebrations</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>MMR Youth - Vinayaka Chaturthi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #1b5e20;
+    }
+    .section {
+      margin-bottom: 30px;
+      border: 2px solid #81c784;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    label, input, button {
+      display: block;
+      margin: 5px 0;
+    }
+    input {
+      padding: 5px;
+      width: 100%;
+    }
+    button {
+      background-color: #43a047;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    table {
+      width: 100%;
+      margin-top: 15px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #a5d6a7;
+      padding: 10px;
+      text-align: left;
+    }
+    .admin-controls {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>MMR Youth Vinayaka Chaturthi Celebrations</h1>
+  <h1>🕉️ MMR Youth - Vinayaka Chaturthi Tracker</h1>
 
-  <div class="container">
-    <div class="form">
-      <h2>Add Donation</h2>
-      <input type="text" id="donorName" placeholder="Donor Name" />
-      <input type="number" id="donationAmount" placeholder="Donation Amount" />
-      <button onclick="addDonation()">Add Donation</button>
-    </div>
-
-    <div class="form">
-      <h2>Add Expense</h2>
-      <input type="text" id="expenseName" placeholder="Expense Name" />
-      <input type="number" id="expenseAmount" placeholder="Expense Amount" />
-      <button onclick="addExpense()">Add Expense</button>
-    </div>
+  <!-- Admin Login -->
+  <div class="section">
+    <h3>Admin Panel</h3>
+    <input type="password" id="adminPass" placeholder="Enter admin password" />
+    <button onclick="loginAsAdmin()">Login</button>
+    <p id="adminStatus"></p>
   </div>
 
-  <div class="summary">
-    <h2>Summary</h2>
-    <p>Total Donations: ₹<span id="totalDonations">0</span></p>
-    <p>Total Expenses: ₹<span id="totalExpenses">0</span></p>
-    <p>Balance: ₹<span id="balance">0</span></p>
+  <!-- Add Donation -->
+  <div class="section admin-controls" id="donationForm">
+    <h3>Add Donation</h3>
+    <input type="text" id="donor" placeholder="Donor Name" />
+    <input type="number" id="amount" placeholder="Amount (₹)" />
+    <button onclick="addDonation()">Add Donation</button>
   </div>
 
-  <div class="list-section">
-    <h2>Donations List</h2>
-    <ul id="donationsList"></ul>
-
-    <h2>Expenses List</h2>
-    <ul id="expensesList"></ul>
+  <!-- Add Expense -->
+  <div class="section admin-controls" id="expenseForm">
+    <h3>Add Expense</h3>
+    <input type="text" id="item" placeholder="Expense Item" />
+    <input type="number" id="expense" placeholder="Amount (₹)" />
+    <button onclick="addExpense()">Add Expense</button>
   </div>
 
-  <script type="module" src="script.js"></script>
+  <!-- Donations Table -->
+  <div class="section">
+    <h3>Donations</h3>
+    <table id="donationTable">
+      <thead>
+        <tr><th>Name</th><th>Amount (₹)</th><th class="admin-controls">Delete</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Expenses Table -->
+  <div class="section">
+    <h3>Expenses</h3>
+    <table id="expenseTable">
+      <thead>
+        <tr><th>Item</th><th>Amount (₹)</th><th class="admin-controls">Delete</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpTK6EM2jKQLgZBDkEGW90Bm8LvhAV58Y",
+      authDomain: "vinayaka-chaturthi-tracker.firebaseapp.com",
+      projectId: "vinayaka-chaturthi-tracker",
+      storageBucket: "vinayaka-chaturthi-tracker.appspot.com",
+      messagingSenderId: "74803522072",
+      appId: "1:74803522072:web:9b3572e9b1b46b936e716d",
+      measurementId: "G-7JC384C460",
+      databaseURL: "https://vinayaka-chaturthi-tracker-default-rtdb.firebaseio.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const donationRef = ref(db, "donations");
+    const expenseRef = ref(db, "expenses");
+
+    let isAdmin = false;
+
+    // Login function
+    window.loginAsAdmin = () => {
+      const password = document.getElementById("adminPass").value;
+      if (password === "vinayaka2025") {
+        isAdmin = true;
+        document.getElementById("adminStatus").innerText = "✅ Admin access granted.";
+        document.querySelectorAll(".admin-controls").forEach(el => el.style.display = "block");
+      } else {
+        alert("❌ Incorrect password.");
+      }
+    };
+
+    // Add Donation
+    window.addDonation = () => {
+      const donor = document.getElementById("donor").value.trim();
+      const amount = parseInt(document.getElementById("amount").value);
+      if (donor && amount) {
+        push(donationRef, { donor, amount });
+        document.getElementById("donor").value = "";
+        document.getElementById("amount").value = "";
+      }
+    };
+
+    // Add Expense
+    window.addExpense = () => {
+      const item = document.getElementById("item").value.trim();
+      const amount = parseInt(document.getElementById("expense").value);
+      if (item && amount) {
+        push(expenseRef, { item, amount });
+        document.getElementById("item").value = "";
+        document.getElementById("expense").value = "";
+      }
+    };
+
+    // Render Donations
+    onValue(donationRef, (snapshot) => {
+      const tbody = document.querySelector("#donationTable tbody");
+      tbody.innerHTML = "";
+      snapshot.forEach(child => {
+        const { donor, amount } = child.val();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${donor}</td>
+          <td>₹${amount}</td>
+          ${isAdmin ? `<td><button onclick="deleteEntry('${child.key}', 'donations')">❌</button></td>` : '<td class="admin-controls"></td>'}
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+
+    // Render Expenses
+    onValue(expenseRef, (snapshot) => {
+      const tbody = document.querySelector("#expenseTable tbody");
+      tbody.innerHTML = "";
+      snapshot.forEach(child => {
+        const { item, amount } = child.val();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item}</td>
+          <td>₹${amount}</td>
+          ${isAdmin ? `<td><button onclick="deleteEntry('${child.key}', 'expenses')">❌</button></td>` : '<td class="admin-controls"></td>'}
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+
+    // Delete Entry
+    window.deleteEntry = (key, type) => {
+      const entryRef = ref(db, `${type}/${key}`);
+      remove(entryRef);
+    };
+  </script>
 </body>
 </html>
