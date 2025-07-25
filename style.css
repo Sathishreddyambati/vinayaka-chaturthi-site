@@ -1,78 +1,56 @@
 body {
-  font-family: Arial, sans-serif;
-  background: #f0fff0;
+  font-family: sans-serif;
+  background-color: #fff3e0;
   color: #333;
-  margin: 0;
   padding: 20px;
-  text-align: center;
-}
-
-h1 {
-  background-color: #228B22;
-  color: white;
-  padding: 20px;
-  margin-bottom: 30px;
-  border-radius: 10px;
 }
 
 .container {
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-
-.form {
-  background: #e0fbe0;
-  padding: 15px;
-  margin: 10px;
+  max-width: 700px;
+  margin: auto;
+  background: #fff8dc;
+  padding: 20px;
   border-radius: 10px;
-  width: 300px;
+  box-shadow: 2px 2px 8px #ccc;
 }
 
-input {
-  width: 90%;
+input, button {
   padding: 10px;
-  margin: 10px 0;
-  border-radius: 5px;
-  border: 1px solid #ccc;
+  margin: 5px 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 button {
-  padding: 10px 20px;
-  background-color: #228B22;
+  background-color: #ff9800;
   color: white;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
 }
 
-.summary, .list-section {
-  margin: 20px auto;
-  max-width: 600px;
-  text-align: left;
+button:hover {
+  background-color: #fb8c00;
 }
 
 ul {
-  list-style: none;
-  padding: 0;
+  list-style-type: none;
+  padding-left: 0;
 }
 
 li {
-  background: #ffffff;
+  padding: 5px;
+  background: #ffe0b2;
   margin: 5px 0;
-  padding: 10px;
   border-radius: 5px;
-  position: relative;
+  display: flex;
+  justify-content: space-between;
 }
 
-li button {
-  position: absolute;
-  right: 10px;
-  top: 10px;
+.delete-btn {
   background: red;
-  border: none;
   color: white;
-  padding: 5px;
-  border-radius: 5px;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
 }
