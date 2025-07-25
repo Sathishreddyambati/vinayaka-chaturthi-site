@@ -32,6 +32,16 @@ function addExpense() {
   }
 }
 
+function deleteDonation(index) {
+  donations.splice(index, 1);
+  updateDisplay();
+}
+
+function deleteExpense(index) {
+  expenses.splice(index, 1);
+  updateDisplay();
+}
+
 function updateDisplay() {
   const totalCollected = donations.reduce((sum, d) => sum + d.amount, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -43,17 +53,17 @@ function updateDisplay() {
 
   const donorList = document.getElementById("donorList");
   donorList.innerHTML = "";
-  donations.forEach(d => {
+  donations.forEach((d, index) => {
     const li = document.createElement("li");
-    li.textContent = `${d.name} - ₹${d.amount.toFixed(2)}`;
+    li.innerHTML = `${d.name} - ₹${d.amount.toFixed(2)} <button onclick="deleteDonation(${index})">🗑️</button>`;
     donorList.appendChild(li);
   });
 
   const expenseList = document.getElementById("expenseList");
   expenseList.innerHTML = "";
-  expenses.forEach(e => {
+  expenses.forEach((e, index) => {
     const li = document.createElement("li");
-    li.textContent = `${e.item} - ₹${e.amount.toFixed(2)}`;
+    li.innerHTML = `${e.item} - ₹${e.amount.toFixed(2)} <button onclick="deleteExpense(${index})">🗑️</button>`;
     expenseList.appendChild(li);
   });
 }
