@@ -1,185 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Donation Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MMR Vinayaka Funds</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
       background: #f0f0f0;
-      padding: 10px;
-      max-width: 600px;
-      margin: auto;
+      padding: 20px;
     }
-    h2, h3 {
-      text-align: center;
+    h2 {
+      color: #333;
     }
-    .card {
+    .section {
       background: white;
       padding: 15px;
       margin: 10px 0;
       border-radius: 10px;
-      box-shadow: 0 2px 5px #ccc;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
     button {
-      padding: 6px 10px;
-      margin: 5px 2px;
-      border: none;
-      background: #28a745;
+      margin: 5px;
+      padding: 8px 12px;
+      background-color: #2196F3;
       color: white;
+      border: none;
       border-radius: 5px;
     }
     input {
-      padding: 5px;
-      width: 100%;
-      margin-bottom: 5px;
+      margin: 5px;
+      padding: 8px;
+      width: calc(100% - 16px);
     }
-    .hidden {
-      display: none;
+    .item {
+      margin: 5px 0;
     }
-    .del-btn {
-      background: #dc3545;
+    .item span {
+      display: inline-block;
+      width: 60%;
     }
-    .list {
-      margin-top: 10px;
+    .item button {
+      background: red;
+      margin-left: 10px;
+    }
+    .item .edit-btn {
+      background: #4CAF50;
     }
   </style>
 </head>
 <body>
 
-  <h2>🙏 MMR Vinayaka Donations 🙏</h2>
+  <h2>🙏 MMR Vinayaka Donations</h2>
 
-  <div class="card">
-    <h3>💰 Summary</h3>
-    <p><strong>Total Donations:</strong> ₹<span id="total-donations">0</span></p>
-    <p><strong>Total Expenses:</strong> ₹<span id="total-expenses">0</span></p>
+  <div class="section">
+    <p><strong>Total Donations:</strong> ₹<span id="totalDonations">0</span></p>
+    <p><strong>Total Expenses:</strong> ₹<span id="totalExpenses">0</span></p>
     <p><strong>Remaining:</strong> ₹<span id="remaining">0</span></p>
   </div>
 
-  <div class="card">
+  <div class="section">
     <h3>👥 Donors</h3>
-    <div id="donors-list" class="list"></div>
+    <div id="donorList"></div>
+    <input type="text" id="donorName" placeholder="Donor Name" />
+    <input type="number" id="donationAmount" placeholder="Amount" />
+    <button onclick="addDonor()">Add Donor</button>
   </div>
 
-  <div class="card">
+  <div class="section">
     <h3>📦 Expenses</h3>
-    <div id="expenses-list" class="list"></div>
+    <div id="expenseList"></div>
+    <input type="text" id="expenseName" placeholder="Expense Description" />
+    <input type="number" id="expenseAmount" placeholder="Amount" />
+    <button onclick="addExpense()">Add Expense</button>
   </div>
 
-  <div class="card">
-    <h3>🔒 Admin Panel</h3>
-    <div id="login-panel">
-      <input type="password" id="admin-password" placeholder="Enter Password">
-      <button onclick="checkLogin()">Login</button>
-    </div>
+  <script>
+    let donors = JSON.parse(localStorage.getItem("donors")) || [];
+    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
 
-    <div id="admin-panel" class="hidden">
-      <h4>Add Donor</h4>
-      <input id="donor-name" placeholder="Name">
-      <input id="donor-amount" placeholder="Amount" type="number">
-      <button onclick="addDonor()">Add Donor</button>
+    function updateDisplay() {
+      let donorHTML = "";
+      let expenseHTML = "";
+      let totalDonations = 0;
+      let totalExpenses = 0;
 
-      <h4>Add Expense</h4>
-      <input id="expense-name" placeholder="Purpose">
-      <input id="expense-amount" placeholder="Amount" type="number">
-      <button onclick="addExpense()">Add Expense</button>
-    </div>
-  </div>
-
-  <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    // 🔧 Paste your Firebase config here
-    const firebaseConfig = {
-      apiKey: "AIzaSyDdMts-eC28FE4RXGtx9ynW3TZ8M510pic",
-      authDomain: "mmr-vinayaka.firebaseapp.com",
-      projectId: "mmr-vinayaka",
-      storageBucket: "mmr-vinayaka.appspot.com",
-      messagingSenderId: "191068816345",
-      appId: "1:191068816345:web:2e8a3f2812962119c88fc8",
-      measurementId: "G-XHGYPLDH38"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const donorsList = document.getElementById("donors-list");
-    const expensesList = document.getElementById("expenses-list");
-    const totalDonations = document.getElementById("total-donations");
-    const totalExpenses = document.getElementById("total-expenses");
-    const remaining = document.getElementById("remaining");
-
-    function renderList() {
-      let totalDonor = 0;
-      let totalExpense = 0;
-      donorsList.innerHTML = '';
-      expensesList.innerHTML = '';
-
-      onSnapshot(collection(db, "donors"), snapshot => {
-        donorsList.innerHTML = '';
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          totalDonor += Number(data.amount);
-          donorsList.innerHTML += `<p>${data.name}: ₹${data.amount} <button class="del-btn" onclick="deleteDonor('${docSnap.id}')">Delete</button></p>`;
-        });
-        totalDonations.textContent = totalDonor;
-        remaining.textContent = totalDonor - totalExpense;
+      donors.forEach((donor, i) => {
+        donorHTML += `
+          <div class="item">
+            <span>${donor.name}: ₹${donor.amount}</span>
+            <button onclick="editDonor(${i})" class="edit-btn">Edit</button>
+            <button onclick="deleteDonor(${i})">Delete</button>
+          </div>`;
+        totalDonations += donor.amount;
       });
 
-      onSnapshot(collection(db, "expenses"), snapshot => {
-        expensesList.innerHTML = '';
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          totalExpense += Number(data.amount);
-          expensesList.innerHTML += `<p>${data.name}: ₹${data.amount} <button class="del-btn" onclick="deleteExpense('${docSnap.id}')">Delete</button></p>`;
-        });
-        totalExpenses.textContent = totalExpense;
-        remaining.textContent = totalDonor - totalExpense;
+      expenses.forEach((expense, i) => {
+        expenseHTML += `
+          <div class="item">
+            <span>${expense.name}: ₹${expense.amount}</span>
+            <button onclick="editExpense(${i})" class="edit-btn">Edit</button>
+            <button onclick="deleteExpense(${i})">Delete</button>
+          </div>`;
+        totalExpenses += expense.amount;
       });
+
+      document.getElementById("donorList").innerHTML = donorHTML;
+      document.getElementById("expenseList").innerHTML = expenseHTML;
+      document.getElementById("totalDonations").innerText = totalDonations;
+      document.getElementById("totalExpenses").innerText = totalExpenses;
+      document.getElementById("remaining").innerText = totalDonations - totalExpenses;
     }
 
-    window.addDonor = async () => {
-      const name = document.getElementById("donor-name").value.trim();
-      const amount = parseFloat(document.getElementById("donor-amount").value);
+    function addDonor() {
+      let name = document.getElementById("donorName").value;
+      let amount = parseInt(document.getElementById("donationAmount").value);
       if (name && amount) {
-        await addDoc(collection(db, "donors"), { name, amount });
-        document.getElementById("donor-name").value = '';
-        document.getElementById("donor-amount").value = '';
+        donors.push({ name, amount });
+        localStorage.setItem("donors", JSON.stringify(donors));
+        document.getElementById("donorName").value = "";
+        document.getElementById("donationAmount").value = "";
+        updateDisplay();
       }
-    };
+    }
 
-    window.addExpense = async () => {
-      const name = document.getElementById("expense-name").value.trim();
-      const amount = parseFloat(document.getElementById("expense-amount").value);
+    function deleteDonor(index) {
+      donors.splice(index, 1);
+      localStorage.setItem("donors", JSON.stringify(donors));
+      updateDisplay();
+    }
+
+    function editDonor(index) {
+      let newName = prompt("Edit Donor Name", donors[index].name);
+      let newAmount = prompt("Edit Amount", donors[index].amount);
+      if (newName && newAmount) {
+        donors[index] = { name: newName, amount: parseInt(newAmount) };
+        localStorage.setItem("donors", JSON.stringify(donors));
+        updateDisplay();
+      }
+    }
+
+    function addExpense() {
+      let name = document.getElementById("expenseName").value;
+      let amount = parseInt(document.getElementById("expenseAmount").value);
       if (name && amount) {
-        await addDoc(collection(db, "expenses"), { name, amount });
-        document.getElementById("expense-name").value = '';
-        document.getElementById("expense-amount").value = '';
+        expenses.push({ name, amount });
+        localStorage.setItem("expenses", JSON.stringify(expenses));
+        document.getElementById("expenseName").value = "";
+        document.getElementById("expenseAmount").value = "";
+        updateDisplay();
       }
-    };
+    }
 
-    window.deleteDonor = async (id) => {
-      await deleteDoc(doc(db, "donors", id));
-    };
+    function deleteExpense(index) {
+      expenses.splice(index, 1);
+      localStorage.setItem("expenses", JSON.stringify(expenses));
+      updateDisplay();
+    }
 
-    window.deleteExpense = async (id) => {
-      await deleteDoc(doc(db, "expenses", id));
-    };
-
-    window.checkLogin = () => {
-      const pass = document.getElementById("admin-password").value;
-      if (pass === "admin123") {
-        document.getElementById("login-panel").classList.add("hidden");
-        document.getElementById("admin-panel").classList.remove("hidden");
-      } else {
-        alert("Incorrect password");
+    function editExpense(index) {
+      let newName = prompt("Edit Expense Name", expenses[index].name);
+      let newAmount = prompt("Edit Amount", expenses[index].amount);
+      if (newName && newAmount) {
+        expenses[index] = { name: newName, amount: parseInt(newAmount) };
+        localStorage.setItem("expenses", JSON.stringify(expenses));
+        updateDisplay();
       }
-    };
+    }
 
-    renderList();
+    updateDisplay();
   </script>
 </body>
 </html>
