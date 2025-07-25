@@ -1,0 +1,53 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MMR Youth Vinayaka Chaturthi Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>🕉️ MMR Youth - Vinayaka Chaturthi 2025</h1>
+    <div class="totals">
+      <p><strong>Total Donations:</strong> ₹<span id="totalDonations">0</span></p>
+      <p><strong>Total Expenses:</strong> ₹<span id="totalExpenses">0</span></p>
+    </div>
+
+    <div class="lists">
+      <h2>🙏 Donors List</h2>
+      <ul id="donorList"></ul>
+
+      <h2>📉 Expenses List</h2>
+      <ul id="expenseList"></ul>
+    </div>
+
+    <hr>
+    <div class="admin">
+      <h2>🔐 Admin Panel</h2>
+      <div id="loginSection">
+        <input type="password" id="adminPassword" placeholder="Enter Admin Password"/>
+        <button onclick="login()">Login</button>
+        <p id="loginError" class="error"></p>
+      </div>
+
+      <div id="adminControls" style="display:none;">
+        <h3>Add Donor</h3>
+        <input type="text" id="donorName" placeholder="Donor Name" />
+        <input type="number" id="donorAmount" placeholder="Amount" />
+        <button onclick="addDonor()">Add Donor</button>
+
+        <h3>Add Expense</h3>
+        <input type="text" id="expenseReason" placeholder="Expense Reason" />
+        <input type="number" id="expenseAmount" placeholder="Amount" />
+        <button onclick="addExpense()">Add Expense</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
