@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MMR Youth Vinayaka Chaturthi Celebrations</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>MMR Youth Vinayaka Chaturthi Celebrations</h1>
+  </header>
+
+  <main>
+    <section id="summary">
+      <h2>Total Summary</h2>
+      <p>Total Collected: ₹<span id="totalCollected">0</span></p>
+      <p>Total Expenses: ₹<span id="totalExpenses">0</span></p>
+      <p>Remaining Balance: ₹<span id="remainingBalance">0</span></p>
+    </section>
+
+    <section id="donations">
+      <h2>Donations</h2>
+      <ul id="donorList"></ul>
+    </section>
+
+    <section id="expenses">
+      <h2>Expenses</h2>
+      <ul id="expenseList"></ul>
+    </section>
+
+    <section id="admin">
+      <h2>Admin Panel</h2>
+      <input type="password" id="adminPass" placeholder="Enter admin password" />
+      <div id="adminForms" style="display:none">
+        <div>
+          <h3>Add Donation</h3>
+          <input type="text" id="donorName" placeholder="Name" />
+          <input type="number" id="donorAmount" placeholder="Amount" />
+          <button onclick="addDonation()">Add</button>
+        </div>
+        <div>
+          <h3>Add Expense</h3>
+          <input type="text" id="expenseItem" placeholder="Item" />
+          <input type="number" id="expenseAmount" placeholder="Amount" />
+          <button onclick="addExpense()">Add</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
