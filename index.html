@@ -1,41 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>MMR Youth Vinayaka Chaturthi Celebrations</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
-  <script defer src="app.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { padding: 20px; background: #fffaf0; font-family: 'Segoe UI'; }
+    h1 { color: #e67e22; margin-bottom: 20px; }
+    .admin-section { display: none; margin-top: 30px; }
+    .hidden { display: none; }
+  </style>
 </head>
 <body>
-  <h1>MMR Youth Vinayaka Chaturthi Celebrations</h1>
+  <div class="container">
+    <h1 class="text-center">MMR Youth Vinayaka Chaturthi Celebrations</h1>
 
-  <div id="loginSection">
-    <input type="password" id="adminPassword" placeholder="Enter admin password"/>
-    <button onclick="login()">Login</button>
-    <p id="loginError" style="color:red;"></p>
+    <div class="mb-3 text-center">
+      <strong>Total Collection:</strong> ₹<span id="totalCollection">0</span> |
+      <strong>Total Expenses:</strong> ₹<span id="totalExpenses">0</span> |
+      <strong>Balance:</strong> ₹<span id="balance">0</span>
+    </div>
+
+    <h3>🙏 Donors List</h3>
+    <ul id="donorsList" class="list-group mb-4"></ul>
+
+    <h3>💸 Expenses List</h3>
+    <ul id="expensesList" class="list-group mb-4"></ul>
+
+    <!-- Admin Password Input -->
+    <div id="adminLogin" class="mb-3">
+      <input type="password" id="adminPassword" class="form-control" placeholder="Enter Admin Password">
+      <button onclick="checkPassword()" class="btn btn-primary mt-2">Login as Admin</button>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-section">
+      <h4>Add Donor</h4>
+      <input type="text" id="donorName" placeholder="Name" class="form-control mb-2">
+      <input type="number" id="donorAmount" placeholder="Amount" class="form-control mb-2">
+      <button onclick="addDonor()" class="btn btn-success mb-3">Add Donor</button>
+
+      <h4>Add Expense</h4>
+      <input type="text" id="expenseItem" placeholder="Item" class="form-control mb-2">
+      <input type="number" id="expenseAmount" placeholder="Amount" class="form-control mb-2">
+      <button onclick="addExpense()" class="btn btn-danger mb-3">Add Expense</button>
+    </div>
   </div>
 
-  <div id="mainContent" style="display:none;">
-    <h2>Donors List</h2>
-    <form id="donorForm">
-      <input type="text" id="donorName" placeholder="Donor Name" required />
-      <input type="number" id="donorAmount" placeholder="Amount" required />
-      <button type="submit">Add Donor</button>
-    </form>
-    <ul id="donorList"></ul>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
 
-    <h2>Expenses List</h2>
-    <form id="expenseForm">
-      <input type="text" id="expenseName" placeholder="Expense Title" required />
-      <input type="number" id="expenseAmount" placeholder="Amount" required />
-      <button type="submit">Add Expense</button>
-    </form>
-    <ul id="expenseList"></ul>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC6-XXXXXX", // Replace with your real config
+      authDomain: "mmr-vinayaka.firebaseapp.com",
+      projectId: "mmr-vinayaka",
+      storageBucket: "mmr-vinayaka.appspot.com",
+      messagingSenderId: "7154528XXX",
+      appId: "1:71545XXXXX:web:XXXXXX"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    <h3 id="summary"></h3>
-  </div>
+    const donorListEl = document.getElementById("donorsList");
+    const expenseListEl = document.getElementById("expensesList");
+
+    function fetchData() {
+      db.collection("donors").onSnapshot(snapshot => {
+        donorListEl.innerHTML = "";
+        let total = 0;
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          total += Number(data.amount);
+          const li = document.createElement("li");
+          li.className = "list-group-item d-flex justify-content-between";
+          li.innerHTML = `<span>${data.name} - ₹${data.amount}</span> 
+            <span class="hidden admin-controls">
+              <button onclick="deleteItem('donors','${doc.id}')" class="btn btn-sm btn-outline-danger">🗑</button>
+            </span>`;
+          donorListEl.appendChild(li);
+        });
+        document.getElementById("totalCollection").innerText = total;
+        updateBalance();
+        toggleAdminControls();
+      });
+
+      db.collection("expenses").onSnapshot(snapshot => {
+        expenseListEl.innerHTML = "";
+        let total = 0;
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          total += Number(data.amount);
+          const li = document.createElement("li");
+          li.className = "list-group-item d-flex justify-content-between";
+          li.innerHTML = `<span>${data.item} - ₹${data.amount}</span> 
+            <span class="hidden admin-controls">
+              <button onclick="deleteItem('expenses','${doc.id}')" class="btn btn-sm btn-outline-danger">🗑</button>
+            </span>`;
+          expenseListEl.appendChild(li);
+        });
+        document.getElementById("totalExpenses").innerText = total;
+        updateBalance();
+        toggleAdminControls();
+      });
+    }
+
+    function updateBalance() {
+      const total = parseInt(document.getElementById("totalCollection").innerText);
+      const expenses = parseInt(document.getElementById("totalExpenses").innerText);
+      document.getElementById("balance").innerText = total - expenses;
+    }
+
+    function addDonor() {
+      const name = document.getElementById("donorName").value;
+      const amount = Number(document.getElementById("donorAmount").value);
+      if (!name || !amount) return alert("Enter name and amount");
+      db.collection("donors").add({ name, amount });
+      document.getElementById("donorName").value = "";
+      document.getElementById("donorAmount").value = "";
+    }
+
+    function addExpense() {
+      const item = document.getElementById("expenseItem").value;
+      const amount = Number(document.getElementById("expenseAmount").value);
+      if (!item || !amount) return alert("Enter item and amount");
+      db.collection("expenses").add({ item, amount });
+      document.getElementById("expenseItem").value = "";
+      document.getElementById("expenseAmount").value = "";
+    }
+
+    function deleteItem(collection, id) {
+      db.collection(collection).doc(id).delete();
+    }
+
+    function checkPassword() {
+      const inputPass = document.getElementById("adminPassword").value;
+      if (inputPass === "mmr2025") {
+        document.getElementById("adminPanel").style.display = "block";
+        toggleAdminControls(true);
+        document.getElementById("adminLogin").style.display = "none";
+      } else {
+        alert("Incorrect password");
+      }
+    }
+
+    function toggleAdminControls(show = false) {
+      document.querySelectorAll(".admin-controls").forEach(el => {
+        el.classList.toggle("hidden", !show);
+      });
+    }
+
+    fetchData();
+  </script>
 </body>
 </html>
