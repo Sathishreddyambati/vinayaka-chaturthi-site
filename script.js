@@ -1,109 +1,116 @@
-// Firebase App (the core Firebase SDK) is always required
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Your Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDpTK6EM2jKQLgZBDkEGW90Bm8LvhAV58Y",
   authDomain: "vinayaka-chaturthi-tracker.firebaseapp.com",
   projectId: "vinayaka-chaturthi-tracker",
-  databaseURL: "https://vinayaka-chaturthi-tracker-default-rtdb.firebaseio.com",
   storageBucket: "vinayaka-chaturthi-tracker.appspot.com",
   messagingSenderId: "74803522072",
-  appId: "1:74803522072:web:9b3572e9b1b46b936e716d",
-  measurementId: "G-7JC384C460"
+  appId: "1:74803522072:web:9b3572e9b1b46b936e716d"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Auth (Simple) - Only admin can add/delete
+const donorListRef = ref(db, 'donors');
+const expenseListRef = ref(db, 'expenses');
+
 let isAdmin = false;
-const adminPassword = "admin123";
+const ADMIN_PASSWORD = "vinayaka123";
 
-document.getElementById("adminLoginBtn").addEventListener("click", () => {
-  const password = prompt("Enter admin password:");
-  if (password === adminPassword) {
+// DOM elements
+const donorName = document.getElementById("donorName");
+const donorAmount = document.getElementById("donorAmount");
+const expenseItem = document.getElementById("expenseItem");
+const expenseAmount = document.getElementById("expenseAmount");
+const donorList = document.getElementById("donorList");
+const expenseList = document.getElementById("expenseList");
+const totalDonations = document.getElementById("totalDonations");
+const totalExpenses = document.getElementById("totalExpenses");
+const balance = document.getElementById("balance");
+const loginMsg = document.getElementById("loginMsg");
+
+function loginAsAdmin() {
+  const inputPass = document.getElementById("adminPass").value;
+  if (inputPass === ADMIN_PASSWORD) {
     isAdmin = true;
-    alert("Admin access granted.");
-    document.getElementById("admin-section").style.display = "block";
+    loginMsg.innerText = "Logged in as Admin ✅";
+    document.getElementById("loginSection").style.display = "none";
   } else {
-    alert("Wrong password!");
+    loginMsg.innerText = "Wrong Password ❌";
   }
-});
+}
 
-// Add Donor
-document.getElementById("addDonorBtn").addEventListener("click", () => {
-  if (!isAdmin) return alert("Only admin can add donors.");
-  const name = document.getElementById("donorName").value;
-  const amount = parseInt(document.getElementById("donorAmount").value);
-  if (name && amount) {
-    push(ref(db, 'donors/'), { name, amount });
-    document.getElementById("donorName").value = "";
-    document.getElementById("donorAmount").value = "";
+window.loginAsAdmin = loginAsAdmin;
+
+function addDonor() {
+  if (donorName.value && donorAmount.value) {
+    push(donorListRef, {
+      name: donorName.value,
+      amount: Number(donorAmount.value)
+    });
+    donorName.value = "";
+    donorAmount.value = "";
   }
-});
+}
+window.addDonor = addDonor;
 
-// Add Expense
-document.getElementById("addExpenseBtn").addEventListener("click", () => {
-  if (!isAdmin) return alert("Only admin can add expenses.");
-  const purpose = document.getElementById("expensePurpose").value;
-  const amount = parseInt(document.getElementById("expenseAmount").value);
-  if (purpose && amount) {
-    push(ref(db, 'expenses/'), { purpose, amount });
-    document.getElementById("expensePurpose").value = "";
-    document.getElementById("expenseAmount").value = "";
+function addExpense() {
+  if (expenseItem.value && expenseAmount.value) {
+    push(expenseListRef, {
+      item: expenseItem.value,
+      amount: Number(expenseAmount.value)
+    });
+    expenseItem.value = "";
+    expenseAmount.value = "";
   }
-});
+}
+window.addExpense = addExpense;
 
-// Fetch and show donor list
-onValue(ref(db, 'donors/'), (snapshot) => {
-  const donorList = document.getElementById("donorList");
-  donorList.innerHTML = "";
-  let totalDonated = 0;
-  snapshot.forEach(child => {
-    const data = child.val();
-    totalDonated += data.amount;
-    const item = document.createElement("li");
-    item.textContent = `${data.name} - ₹${data.amount}`;
-    if (isAdmin) {
-      const del = document.createElement("button");
-      del.textContent = "Delete";
-      del.onclick = () => remove(ref(db, `donors/${child.key}`));
-      item.appendChild(del);
+function updateTotalsAndBalance(donors, expenses) {
+  const totalDon = donors.reduce((sum, d) => sum + d.amount, 0);
+  const totalExp = expenses.reduce((sum, e) => sum + e.amount, 0);
+  totalDonations.innerText = totalDon;
+  totalExpenses.innerText = totalExp;
+  balance.innerText = totalDon - totalExp;
+}
+
+function renderList(refType, listElement, isDonor) {
+  onValue(refType, snapshot => {
+    listElement.innerHTML = "";
+    const data = snapshot.val() || {};
+    const entries = [];
+    for (const key in data) {
+      const item = data[key];
+      entries.push(item);
+      const li = document.createElement("li");
+      li.textContent = isDonor ? `${item.name} - ₹${item.amount}` : `${item.item} - ₹${item.amount}`;
+
+      if (isAdmin) {
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "deleteBtn";
+        delBtn.onclick = () => remove(ref(db, `${isDonor ? "donors" : "expenses"}/${key}`));
+        li.appendChild(delBtn);
+      }
+
+      listElement.appendChild(li);
     }
-    donorList.appendChild(item);
-  });
-  document.getElementById("totalDonated").textContent = `Total Donations: ₹${totalDonated}`;
-});
 
-// Fetch and show expense list
-onValue(ref(db, 'expenses/'), (snapshot) => {
-  const expenseList = document.getElementById("expenseList");
-  expenseList.innerHTML = "";
-  let totalSpent = 0;
-  snapshot.forEach(child => {
-    const data = child.val();
-    totalSpent += data.amount;
-    const item = document.createElement("li");
-    item.textContent = `${data.purpose} - ₹${data.amount}`;
-    if (isAdmin) {
-      const del = document.createElement("button");
-      del.textContent = "Delete";
-      del.onclick = () => remove(ref(db, `expenses/${child.key}`));
-      item.appendChild(del);
-    }
-    expenseList.appendChild(item);
-  });
-  document.getElementById("totalExpenses").textContent = `Total Expenses: ₹${totalSpent}`;
-});
+    const donors = isDonor ? entries : [];
+    const expenses = isDonor ? [] : entries;
+    updateTotalsAndBalance(
+      isDonor ? entries : currentDonors,
+      isDonor ? currentExpenses : entries
+    );
 
-// Net Balance
-onValue(ref(db), (snapshot) => {
-  const data = snapshot.val() || {};
-  const donors = Object.values(data.donors || {});
-  const expenses = Object.values(data.expenses || {});
-  const total = donors.reduce((sum, d) => sum + d.amount, 0) - expenses.reduce((sum, e) => sum + e.amount, 0);
-  document.getElementById("balance").textContent = `Remaining Balance: ₹${total}`;
-});
+    if (isDonor) currentDonors = entries;
+    else currentExpenses = entries;
+  });
+}
+
+let currentDonors = [], currentExpenses = [];
+
+renderList(donorListRef, donorList, true);
+renderList(expenseListRef, expenseList, false);
