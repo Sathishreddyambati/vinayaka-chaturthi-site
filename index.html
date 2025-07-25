@@ -3,41 +3,148 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MMR Youth Vinayaka Chaturthi Tracker</title>
-  <link rel="stylesheet" href="style.css"/>
+  <title>MMR Vinayaka Donations</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+    h2 { color: #3b3b3b; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .admin-panel { margin-top: 30px; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    .total { font-weight: bold; margin-top: 15px; }
+    .hidden { display: none; }
+    .btn { background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-danger { background: #dc3545; }
+    .btn-edit { background: #ffc107; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>MMR Youth Vinayaka Chaturthi Tracker</h1>
-    <div class="totals">
-      <p><strong>Total Donated:</strong> ₹<span id="total-donated">0</span></p>
-      <p><strong>Total Spent:</strong> ₹<span id="total-expenses">0</span></p>
-      <p><strong>Remaining Amount:</strong> ₹<span id="remaining-amount">0</span></p>
+<div class="container">
+  <h2>🕉️ MMR Vinayaka Donations</h2>
+
+  <div id="totals">
+    <p class="total" id="donorTotal">Total Donated: ₹0</p>
+    <p class="total" id="expenseTotal">Total Spent: ₹0</p>
+    <p class="total" id="remainingTotal">Remaining Balance: ₹0</p>
+  </div>
+
+  <h3>Donors List</h3>
+  <table id="donorTable">
+    <tr><th>Name</th><th>Amount</th><th class="hidden">Actions</th></tr>
+  </table>
+
+  <h3>Expenses List</h3>
+  <table id="expenseTable">
+    <tr><th>Reason</th><th>Amount</th><th class="hidden">Actions</th></tr>
+  </table>
+
+  <div class="admin-panel">
+    <h3>🔐 Admin Panel</h3>
+    <div id="loginSection">
+      <input type="password" id="adminPass" placeholder="Enter Password" />
+      <button class="btn" onclick="checkPassword()">Login</button>
     </div>
 
-    <div class="lists">
-      <h2>Donors List</h2>
-      <ul id="donors-list"></ul>
+    <div id="adminActions" class="hidden">
+      <h4>Add Donor</h4>
+      <input id="donorName" placeholder="Name" />
+      <input id="donorAmount" placeholder="Amount" type="number" />
+      <button class="btn" onclick="addDonor()">Add Donor</button>
 
-      <h2>Expenses List</h2>
-      <ul id="expenses-list"></ul>
-    </div>
-
-    <div class="admin-panel">
-      <h2>Admin Panel</h2>
-      <div id="admin-login">
-        <input type="password" id="admin-password" placeholder="Enter admin password"/>
-        <button onclick="login()">Login</button>
-      </div>
-      <div id="admin-controls" style="display:none;">
-        <button onclick="showDonorForm()">Add Donor</button>
-        <button onclick="showExpenseForm()">Add Expense</button>
-        <div id="form-container"></div>
-      </div>
+      <h4>Add Expense</h4>
+      <input id="expenseReason" placeholder="Reason" />
+      <input id="expenseAmount" placeholder="Amount" type="number" />
+      <button class="btn" onclick="addExpense()">Add Expense</button>
     </div>
   </div>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="script.js"></script>
+</div>
+
+<!-- Firebase Scripts -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdMts-eC28FE4RXGtx9ynW3TZ8M510pic",
+    authDomain: "mmr-vinayaka.firebaseapp.com",
+    projectId: "mmr-vinayaka",
+    storageBucket: "mmr-vinayaka.appspot.com",
+    messagingSenderId: "191068816345",
+    appId: "1:191068816345:web:2e8a3f2812962119c88fc8",
+    measurementId: "G-XHGYPLDH38"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const donorTable = document.getElementById('donorTable');
+  const expenseTable = document.getElementById('expenseTable');
+  const donorTotal = document.getElementById('donorTotal');
+  const expenseTotal = document.getElementById('expenseTotal');
+  const remainingTotal = document.getElementById('remainingTotal');
+
+  async function fetchData() {
+    donorTable.innerHTML = '<tr><th>Name</th><th>Amount</th><th class="hidden">Actions</th></tr>';
+    expenseTable.innerHTML = '<tr><th>Reason</th><th>Amount</th><th class="hidden">Actions</th></tr>';
+    let totalDonor = 0, totalExpense = 0;
+
+    const donorSnap = await getDocs(collection(db, "donors"));
+    donorSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      totalDonor += Number(data.amount);
+      donorTable.innerHTML += `<tr><td>${data.name}</td><td>₹${data.amount}</td></tr>`;
+    });
+
+    const expenseSnap = await getDocs(collection(db, "expenses"));
+    expenseSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      totalExpense += Number(data.amount);
+      expenseTable.innerHTML += `<tr><td>${data.reason}</td><td>₹${data.amount}</td></tr>`;
+    });
+
+    donorTotal.textContent = `Total Donated: ₹${totalDonor}`;
+    expenseTotal.textContent = `Total Spent: ₹${totalExpense}`;
+    remainingTotal.textContent = `Remaining Balance: ₹${totalDonor - totalExpense}`;
+  }
+
+  async function addDonor() {
+    const name = document.getElementById("donorName").value;
+    const amount = document.getElementById("donorAmount").value;
+    if (name && amount) {
+      await addDoc(collection(db, "donors"), { name, amount });
+      fetchData();
+      document.getElementById("donorName").value = "";
+      document.getElementById("donorAmount").value = "";
+    }
+  }
+
+  async function addExpense() {
+    const reason = document.getElementById("expenseReason").value;
+    const amount = document.getElementById("expenseAmount").value;
+    if (reason && amount) {
+      await addDoc(collection(db, "expenses"), { reason, amount });
+      fetchData();
+      document.getElementById("expenseReason").value = "";
+      document.getElementById("expenseAmount").value = "";
+    }
+  }
+
+  function checkPassword() {
+    const entered = document.getElementById("adminPass").value;
+    if (entered === "vinayaka123") {
+      document.getElementById("adminActions").classList.remove("hidden");
+    } else {
+      alert("Wrong password!");
+    }
+  }
+
+  // Initial Load
+  fetchData();
+</script>
 </body>
 </html>
