@@ -1,0 +1,26 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background-color: #f2f2f2;
+}
+h1 {
+  text-align: center;
+  color: #2e3b55;
+}
+form {
+  margin-bottom: 10px;
+}
+input {
+  padding: 8px;
+  margin-right: 10px;
+}
+button {
+  padding: 8px 12px;
+}
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+li {
+  padding: 6px 0;
+}

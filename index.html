@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MMR Youth Vinayaka Chaturthi Celebrations</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <h1>MMR Youth Vinayaka Chaturthi Celebrations</h1>
+
+  <div id="loginSection">
+    <input type="password" id="adminPassword" placeholder="Enter admin password"/>
+    <button onclick="login()">Login</button>
+    <p id="loginError" style="color:red;"></p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <h2>Donors List</h2>
+    <form id="donorForm">
+      <input type="text" id="donorName" placeholder="Donor Name" required />
+      <input type="number" id="donorAmount" placeholder="Amount" required />
+      <button type="submit">Add Donor</button>
+    </form>
+    <ul id="donorList"></ul>
+
+    <h2>Expenses List</h2>
+    <form id="expenseForm">
+      <input type="text" id="expenseName" placeholder="Expense Title" required />
+      <input type="number" id="expenseAmount" placeholder="Amount" required />
+      <button type="submit">Add Expense</button>
+    </form>
+    <ul id="expenseList"></ul>
+
+    <h3 id="summary"></h3>
+  </div>
+</body>
+</html>
