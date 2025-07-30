@@ -129,11 +129,10 @@
     <div id="loginError" class="error"></div>
   </div>
 
-  <script type="module">
-    // Import Firebase functions
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
     // Your Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyDKMySTY1e7iTHziERxxNk8PJh_0BxRuX8",
@@ -147,13 +146,13 @@
     };
 
     // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
     
     // Database references
-    const donorsRef = ref(database, 'donors');
-    const expensesRef = ref(database, 'expenses');
-    const adminRef = ref(database, 'admin');
+    const donorsRef = database.ref('donors');
+    const expensesRef = database.ref('expenses');
+    const adminRef = database.ref('admin');
 
     // Local data storage
     let donors = [];
@@ -175,22 +174,22 @@
       addExpenseBtn.addEventListener('click', addExpense);
 
       // Load admin password
-      onValue(ref(database, 'admin/password'), (snapshot) => {
+      adminRef.child('password').once('value').then((snapshot) => {
         if (snapshot.exists()) {
           ADMIN_PASSWORD = snapshot.val();
         }
-      }, { onlyOnce: true });
+      });
 
       // Set up real-time listeners for data
-      onValue(donorsRef, (snapshot) => {
+      donorsRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        donors = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value })) : [];
+        donors = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value }) : [];
         updateDisplay();
       });
 
-      onValue(expensesRef, (snapshot) => {
+      expensesRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        expenses = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value })) : [];
+        expenses = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value }) : [];
         updateDisplay();
       });
     }
@@ -229,8 +228,8 @@
     }
 
     function updateTotals() {
-      const totalDonations = donors.reduce((sum, donor) => sum + (parseInt(donor.amount) || 0), 0);
-      const totalExpenses = expenses.reduce((sum, expense) => sum + (parseInt(expense.amount) || 0), 0);
+      const totalDonations = donors.reduce((sum, donor) => sum + (parseInt(donor.amount) || 0, 0);
+      const totalExpenses = expenses.reduce((sum, expense) => sum + (parseInt(expense.amount) || 0, 0);
       
       document.getElementById("totalDonations").innerText = totalDonations;
       document.getElementById("totalExpenses").innerText = totalExpenses;
@@ -240,36 +239,36 @@
     function setupButtonEventListeners() {
       // Donor buttons
       document.querySelectorAll('#donorList .edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.onclick = (e) => {
           const itemId = e.target.closest('.item').getAttribute('data-id');
           const donor = donors.find(d => d.id === itemId);
           if (donor) editDonor(donor);
-        });
+        };
       });
 
       document.querySelectorAll('#donorList .delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.onclick = (e) => {
           const itemId = e.target.closest('.item').getAttribute('data-id');
           const donor = donors.find(d => d.id === itemId);
           if (donor) deleteDonor(donor);
-        });
+        };
       });
 
       // Expense buttons
       document.querySelectorAll('#expenseList .edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.onclick = (e) => {
           const itemId = e.target.closest('.item').getAttribute('data-id');
           const expense = expenses.find(e => e.id === itemId);
           if (expense) editExpense(expense);
-        });
+        };
       });
 
       document.querySelectorAll('#expenseList .delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.onclick = (e) => {
           const itemId = e.target.closest('.item').getAttribute('data-id');
           const expense = expenses.find(e => e.id === itemId);
           if (expense) deleteExpense(expense);
-        });
+        };
       });
     }
 
@@ -312,19 +311,19 @@
       }
       
       // Add to Firebase
-      push(donorsRef, {
+      donorsRef.push({
         name: name,
         amount: amount,
         timestamp: Date.now()
-      })
-      .then(() => {
-        document.getElementById("donorName").value = "";
-        document.getElementById("donationAmount").value = "";
-        successElement.innerText = "Donor added successfully!";
-        setTimeout(() => successElement.innerText = "", 3000);
-      })
-      .catch((error) => {
-        errorElement.innerText = "Error adding donor: " + error.message;
+      }, (error) => {
+        if (error) {
+          errorElement.innerText = "Error adding donor: " + error.message;
+        } else {
+          document.getElementById("donorName").value = "";
+          document.getElementById("donationAmount").value = "";
+          successElement.innerText = "Donor added successfully!";
+          setTimeout(() => successElement.innerText = "", 3000);
+        }
       });
     }
 
@@ -336,23 +335,25 @@
       if (newAmount === null) return; // User cancelled
       
       if (newName && newAmount && !isNaN(newAmount)) {
-        update(ref(database, `donors/${donor.id}`), {
+        donorsRef.child(donor.id).update({
           name: newName.trim(),
           amount: parseInt(newAmount),
           timestamp: Date.now()
-        })
-        .catch((error) => {
-          alert("Error updating donor: " + error.message);
+        }, (error) => {
+          if (error) {
+            alert("Error updating donor: " + error.message);
+          }
         });
       }
     }
 
     function deleteDonor(donor) {
       if (confirm(`Are you sure you want to delete donor ${donor.name}?`)) {
-        remove(ref(database, `donors/${donor.id}`))
-          .catch((error) => {
+        donorsRef.child(donor.id).remove((error) => {
+          if (error) {
             alert("Error deleting donor: " + error.message);
-          });
+          }
+        });
       }
     }
 
@@ -377,19 +378,19 @@
       }
       
       // Add to Firebase
-      push(expensesRef, {
+      expensesRef.push({
         name: name,
         amount: amount,
         timestamp: Date.now()
-      })
-      .then(() => {
-        document.getElementById("expenseName").value = "";
-        document.getElementById("expenseAmount").value = "";
-        successElement.innerText = "Expense added successfully!";
-        setTimeout(() => successElement.innerText = "", 3000);
-      })
-      .catch((error) => {
-        errorElement.innerText = "Error adding expense: " + error.message;
+      }, (error) => {
+        if (error) {
+          errorElement.innerText = "Error adding expense: " + error.message;
+        } else {
+          document.getElementById("expenseName").value = "";
+          document.getElementById("expenseAmount").value = "";
+          successElement.innerText = "Expense added successfully!";
+          setTimeout(() => successElement.innerText = "", 3000);
+        }
       });
     }
 
@@ -401,25 +402,27 @@
       if (newAmount === null) return; // User cancelled
       
       if (newName && newAmount && !isNaN(newAmount)) {
-        update(ref(database, `expenses/${expense.id}`), {
+        expensesRef.child(expense.id).update({
           name: newName.trim(),
           amount: parseInt(newAmount),
           timestamp: Date.now()
-        })
-        .catch((error) => {
-          alert("Error updating expense: " + error.message);
+        }, (error) => {
+          if (error) {
+            alert("Error updating expense: " + error.message);
+          }
         });
       }
     }
 
     function deleteExpense(expense) {
       if (confirm(`Are you sure you want to delete expense ${expense.name}?`)) {
-        remove(ref(database, `expenses/${expense.id}`))
-          .catch((error) => {
+        expensesRef.child(expense.id).remove((error) => {
+          if (error) {
             alert("Error deleting expense: " + error.message);
-          });
+          }
+        });
       }
     }
   </script>
 </body>
-</html>
+  </html>
