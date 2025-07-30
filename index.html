@@ -82,9 +82,6 @@
       margin-top: 5px;
     }
   </style>
-  <!-- Add Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -102,7 +99,7 @@
     <div class="admin-controls">
       <input type="text" id="donorName" placeholder="Donor Name" />
       <input type="number" id="donationAmount" placeholder="Amount" />
-      <button onclick="addDonor()">Add Donor</button>
+      <button id="addDonorBtn">Add Donor</button>
       <div id="donorError" class="error"></div>
     </div>
   </div>
@@ -113,7 +110,7 @@
     <div class="admin-controls">
       <input type="text" id="expenseName" placeholder="Expense Description" />
       <input type="number" id="expenseAmount" placeholder="Amount" />
-      <button onclick="addExpense()">Add Expense</button>
+      <button id="addExpenseBtn">Add Expense</button>
       <div id="expenseError" class="error"></div>
     </div>
   </div>
@@ -121,12 +118,18 @@
   <div id="loginForm">
     <h3>Admin Login</h3>
     <input type="password" id="adminPassword" placeholder="Enter Password" />
-    <button id="loginBtn" onclick="checkLogin()">Login</button>
+    <button id="loginBtn">Login</button>
     <div id="loginError" class="error"></div>
   </div>
 
-  <script>
-    // Your Firebase configuration
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+
+    // Your web app's Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyDKMySTY1e7iTHziERxxNk8PJh_0BxRuX8",
       authDomain: "donars-listmain.firebaseapp.com",
@@ -139,40 +142,49 @@
     };
 
     // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const database = getDatabase(app);
     
     // Database references
-    const donorsRef = database.ref('donors');
-    const expensesRef = database.ref('expenses');
-    const adminRef = database.ref('admin');
+    const donorsRef = ref(database, 'donors');
+    const expensesRef = ref(database, 'expenses');
+    const adminRef = ref(database, 'admin');
 
     // Local data storage
     let donors = [];
     let expenses = [];
-    let ADMIN_PASSWORD = "admin123"; // Default password (will be overwritten if set in Firebase)
+    let ADMIN_PASSWORD = "admin123"; // Default password
+
+    // DOM elements
+    const loginBtn = document.getElementById('loginBtn');
+    const addDonorBtn = document.getElementById('addDonorBtn');
+    const addExpenseBtn = document.getElementById('addExpenseBtn');
+
+    // Event listeners
+    loginBtn.addEventListener('click', checkLogin);
+    addDonorBtn.addEventListener('click', addDonor);
+    addExpenseBtn.addEventListener('click', addExpense);
 
     // Initialize listeners for real-time updates
-    donorsRef.on('value', (snapshot) => {
+    onValue(donorsRef, (snapshot) => {
       const data = snapshot.val();
       donors = data ? Object.values(data) : [];
       updateDisplay();
     });
 
-    expensesRef.on('value', (snapshot) => {
+    onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
       expenses = data ? Object.values(data) : [];
       updateDisplay();
     });
 
     // Check if admin password is set in Firebase
-    adminRef.child('password').once('value').then((snapshot) => {
+    onValue(ref(database, 'admin/password'), (snapshot) => {
       if (snapshot.exists()) {
         ADMIN_PASSWORD = snapshot.val();
       }
-    }).catch((error) => {
-      console.error("Error fetching admin password:", error);
-    });
+    }, { onlyOnce: true });
 
     function updateDisplay() {
       let donorHTML = "";
@@ -186,8 +198,8 @@
           donorHTML += `
             <div class="item">
               <span>${donor.name}: ₹${donor.amount}</span>
-              <button onclick="editDonor(${i})" class="edit-btn admin-controls">Edit</button>
-              <button onclick="deleteDonor(${i})" class="admin-controls">Delete</button>
+              <button data-index="${i}" class="edit-btn admin-controls">Edit</button>
+              <button data-index="${i}" class="admin-controls delete-btn">Delete</button>
             </div>`;
           totalDonations += parseInt(donor.amount) || 0;
         }
@@ -199,8 +211,8 @@
           expenseHTML += `
             <div class="item">
               <span>${expense.name}: ₹${expense.amount}</span>
-              <button onclick="editExpense(${i})" class="edit-btn admin-controls">Edit</button>
-              <button onclick="deleteExpense(${i})" class="admin-controls">Delete</button>
+              <button data-index="${i}" class="edit-btn admin-controls">Edit</button>
+              <button data-index="${i}" class="admin-controls delete-btn">Delete</button>
             </div>`;
           totalExpenses += parseInt(expense.amount) || 0;
         }
@@ -212,6 +224,29 @@
       document.getElementById("totalDonations").innerText = totalDonations;
       document.getElementById("totalExpenses").innerText = totalExpenses;
       document.getElementById("remaining").innerText = totalDonations - totalExpenses;
+
+      // Add event listeners to dynamically created buttons
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = e.target.getAttribute('data-index');
+          if (e.target.closest('#donorList')) {
+            editDonor(index);
+          } else {
+            editExpense(index);
+          }
+        });
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = e.target.getAttribute('data-index');
+          if (e.target.closest('#donorList')) {
+            deleteDonor(index);
+          } else {
+            deleteExpense(index);
+          }
+        });
+      });
     }
 
     function checkLogin() {
@@ -251,7 +286,7 @@
       errorElement.innerText = "";
       
       // Add to Firebase
-      donorsRef.push({
+      push(donorsRef, {
         name: name,
         amount: amount
       })
@@ -269,9 +304,9 @@
       
       if (confirm("Are you sure you want to delete this donor?")) {
         // Get the key of the donor to delete
-        const donorKey = Object.keys(donorsRef.get().val() || {})[index];
+        const donorKey = Object.keys(donors)[index];
         if (donorKey) {
-          donorsRef.child(donorKey).remove()
+          remove(ref(database, `donors/${donorKey}`))
             .catch((error) => {
               alert("Error deleting donor: " + error.message);
             });
@@ -282,7 +317,7 @@
     function editDonor(index) {
       if (index < 0 || index >= donors.length) return;
       
-      const donorKey = Object.keys(donorsRef.get().val() || {})[index];
+      const donorKey = Object.keys(donors)[index];
       if (!donorKey) return;
       
       const currentDonor = donors[index];
@@ -294,7 +329,7 @@
       if (newAmount === null) return; // User cancelled
       
       if (newName && newAmount && !isNaN(newAmount)) {
-        donorsRef.child(donorKey).update({
+        update(ref(database, `donors/${donorKey}`), {
           name: newName.trim(),
           amount: parseInt(newAmount)
         })
@@ -322,7 +357,7 @@
       errorElement.innerText = "";
       
       // Add to Firebase
-      expensesRef.push({
+      push(expensesRef, {
         name: name,
         amount: amount
       })
@@ -340,9 +375,9 @@
       
       if (confirm("Are you sure you want to delete this expense?")) {
         // Get the key of the expense to delete
-        const expenseKey = Object.keys(expensesRef.get().val() || {})[index];
+        const expenseKey = Object.keys(expenses)[index];
         if (expenseKey) {
-          expensesRef.child(expenseKey).remove()
+          remove(ref(database, `expenses/${expenseKey}`))
             .catch((error) => {
               alert("Error deleting expense: " + error.message);
             });
@@ -353,7 +388,7 @@
     function editExpense(index) {
       if (index < 0 || index >= expenses.length) return;
       
-      const expenseKey = Object.keys(expensesRef.get().val() || {})[index];
+      const expenseKey = Object.keys(expenses)[index];
       if (!expenseKey) return;
       
       const currentExpense = expenses[index];
@@ -365,7 +400,7 @@
       if (newAmount === null) return; // User cancelled
       
       if (newName && newAmount && !isNaN(newAmount)) {
-        expensesRef.child(expenseKey).update({
+        update(ref(database, `expenses/${expenseKey}`), {
           name: newName.trim(),
           amount: parseInt(newAmount)
         })
@@ -374,9 +409,6 @@
         });
       }
     }
-
-    // Initial display update
-    updateDisplay();
   </script>
 </body>
 </html>
