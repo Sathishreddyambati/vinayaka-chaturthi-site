@@ -75,97 +75,121 @@
     <button onclick="addExpense()">Add Expense</button>
   </div>
 
-  <script>
-    let donors = JSON.parse(localStorage.getItem("donors")) || [];
-    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-    function updateDisplay() {
-      let donorHTML = "";
-      let expenseHTML = "";
-      let totalDonations = 0;
-      let totalExpenses = 0;
+    const firebaseConfig = {
+      apiKey: "AIzaSyDKMySTY1e7iTHziERxxNk8PJh_0BxRuX8",
+      authDomain: "donars-listmain.firebaseapp.com",
+      databaseURL: "https://donars-listmain-default-rtdb.firebaseio.com",
+      projectId: "donars-listmain",
+      storageBucket: "donars-listmain.appspot.com",
+      messagingSenderId: "161394187809",
+      appId: "1:161394187809:web:12a18ba01dd84734ab4d60",
+      measurementId: "G-RGHMRS5XWD"
+    };
 
-      donors.forEach((donor, i) => {
-        donorHTML += `
-          <div class="item">
-            <span>${donor.name}: ₹${donor.amount}</span>
-            <button onclick="editDonor(${i})" class="edit-btn">Edit</button>
-            <button onclick="deleteDonor(${i})">Delete</button>
-          </div>`;
-        totalDonations += donor.amount;
-      });
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-      expenses.forEach((expense, i) => {
-        expenseHTML += `
-          <div class="item">
-            <span>${expense.name}: ₹${expense.amount}</span>
-            <button onclick="editExpense(${i})" class="edit-btn">Edit</button>
-            <button onclick="deleteExpense(${i})">Delete</button>
-          </div>`;
-        totalExpenses += expense.amount;
-      });
-
-      document.getElementById("donorList").innerHTML = donorHTML;
-      document.getElementById("expenseList").innerHTML = expenseHTML;
-      document.getElementById("totalDonations").innerText = totalDonations;
-      document.getElementById("totalExpenses").innerText = totalExpenses;
-      document.getElementById("remaining").innerText = totalDonations - totalExpenses;
-    }
+    const donorsRef = ref(db, "donors");
+    const expensesRef = ref(db, "expenses");
 
     function addDonor() {
-      let name = document.getElementById("donorName").value;
-      let amount = parseInt(document.getElementById("donationAmount").value);
+      const name = document.getElementById("donorName").value;
+      const amount = parseInt(document.getElementById("donationAmount").value);
       if (name && amount) {
-        donors.push({ name, amount });
-        localStorage.setItem("donors", JSON.stringify(donors));
+        const newRef = push(donorsRef);
+        set(newRef, { name, amount });
         document.getElementById("donorName").value = "";
         document.getElementById("donationAmount").value = "";
-        updateDisplay();
-      }
-    }
-
-    function deleteDonor(index) {
-      donors.splice(index, 1);
-      localStorage.setItem("donors", JSON.stringify(donors));
-      updateDisplay();
-    }
-
-    function editDonor(index) {
-      let newName = prompt("Edit Donor Name", donors[index].name);
-      let newAmount = prompt("Edit Amount", donors[index].amount);
-      if (newName && newAmount) {
-        donors[index] = { name: newName, amount: parseInt(newAmount) };
-        localStorage.setItem("donors", JSON.stringify(donors));
-        updateDisplay();
       }
     }
 
     function addExpense() {
-      let name = document.getElementById("expenseName").value;
-      let amount = parseInt(document.getElementById("expenseAmount").value);
+      const name = document.getElementById("expenseName").value;
+      const amount = parseInt(document.getElementById("expenseAmount").value);
       if (name && amount) {
-        expenses.push({ name, amount });
-        localStorage.setItem("expenses", JSON.stringify(expenses));
+        const newRef = push(expensesRef);
+        set(newRef, { name, amount });
         document.getElementById("expenseName").value = "";
         document.getElementById("expenseAmount").value = "";
-        updateDisplay();
       }
     }
 
-    function deleteExpense(index) {
-      expenses.splice(index, 1);
-      localStorage.setItem("expenses", JSON.stringify(expenses));
-      updateDisplay();
-    }
-
-    function editExpense(index) {
-      let newName = prompt("Edit Expense Name", expenses[index].name);
-      let newAmount = prompt("Edit Amount", expenses[index].amount);
+    function editDonor(id, data) {
+      const newName = prompt("Edit Donor Name", data.name);
+      const newAmount = prompt("Edit Amount", data.amount);
       if (newName && newAmount) {
-        expenses[index] = { name: newName, amount: parseInt(newAmount) };
-        localStorage.setItem("expenses", JSON.stringify(expenses));
-        updateDisplay();
+        update(ref(db, `donors/${id}`), {
+          name: newName,
+          amount: parseInt(newAmount)
+        });
       }
+    }
+
+    function deleteDonor(id) {
+      remove(ref(db, `donors/${id}`));
+    }
+
+    function editExpense(id, data) {
+      const newName = prompt("Edit Expense Name", data.name);
+      const newAmount = prompt("Edit Amount", data.amount);
+      if (newName && newAmount) {
+        update(ref(db, `expenses/${id}`), {
+          name: newName,
+          amount: parseInt(newAmount)
+        });
+      }
+    }
+
+    function deleteExpense(id) {
+      remove(ref(db, `expenses/${id}`));
+    }
+
+    function updateDisplay() {
+      onValue(donorsRef, (snapshot) => {
+        let totalDonations = 0;
+        let donorHTML = "";
+        snapshot.forEach((child) => {
+          const data = child.val();
+          totalDonations += data.amount;
+          donorHTML += `
+            <div class="item">
+              <span>${data.name}: ₹${data.amount}</span>
+              <button class="edit-btn" onclick='editDonor("${child.key}", ${JSON.stringify(data)})'>Edit</button>
+              <button onclick='deleteDonor("${child.key}")'>Delete</button>
+            </div>`;
+        });
+        document.getElementById("donorList").innerHTML = donorHTML;
+        document.getElementById("totalDonations").innerText = totalDonations;
+        updateRemaining();
+      });
+
+      onValue(expensesRef, (snapshot) => {
+        let totalExpenses = 0;
+        let expenseHTML = "";
+        snapshot.forEach((child) => {
+          const data = child.val();
+          totalExpenses += data.amount;
+          expenseHTML += `
+            <div class="item">
+              <span>${data.name}: ₹${data.amount}</span>
+              <button class="edit-btn" onclick='editExpense("${child.key}", ${JSON.stringify(data)})'>Edit</button>
+              <button onclick='deleteExpense("${child.key}")'>Delete</button>
+            </div>`;
+        });
+        document.getElementById("expenseList").innerHTML = expenseHTML;
+        document.getElementById("totalExpenses").innerText = totalExpenses;
+        updateRemaining();
+      });
+    }
+
+    function updateRemaining() {
+      const totalDonations = parseInt(document.getElementById("totalDonations").innerText) || 0;
+      const totalExpenses = parseInt(document.getElementById("totalExpenses").innerText) || 0;
+      document.getElementById("remaining").innerText = totalDonations - totalExpenses;
     }
 
     updateDisplay();
