@@ -159,19 +159,12 @@
     let expenses = [];
     let ADMIN_PASSWORD = "admin123"; // Default password
 
-    // DOM elements
-    const loginBtn = document.getElementById('loginBtn');
-    const addDonorBtn = document.getElementById('addDonorBtn');
-    const addExpenseBtn = document.getElementById('addExpenseBtn');
-
-    // Initialize the application
-    initApp();
-
-    function initApp() {
+    // Initialize the application when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
       // Set up event listeners
-      loginBtn.addEventListener('click', checkLogin);
-      addDonorBtn.addEventListener('click', addDonor);
-      addExpenseBtn.addEventListener('click', addExpense);
+      document.getElementById('loginBtn').addEventListener('click', checkLogin);
+      document.getElementById('addDonorBtn').addEventListener('click', addDonor);
+      document.getElementById('addExpenseBtn').addEventListener('click', addExpense);
 
       // Load admin password
       adminRef.child('password').once('value').then((snapshot) => {
@@ -192,7 +185,7 @@
         expenses = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value }) : [];
         updateDisplay();
       });
-    }
+    });
 
     function updateDisplay() {
       updateDonorList();
@@ -425,4 +418,4 @@
     }
   </script>
 </body>
-  </html>
+      </html>
