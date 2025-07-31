@@ -48,10 +48,6 @@
     .item .edit-btn {
       background: #4CAF50;
     }
-    #adminPanel {
-      display: none;
-      margin-top: 20px;
-    }
     #loginForm {
       background: white;
       padding: 15px;
@@ -73,7 +69,15 @@
     .logged-in .admin-controls {
       display: inline-block;
     }
+    .loading {
+      text-align: center;
+      padding: 10px;
+      color: #666;
+    }
   </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -87,7 +91,9 @@
 
   <div class="section">
     <h3>👥 Donors</h3>
-    <div id="donorList"></div>
+    <div id="donorList">
+      <div class="loading">Loading donors list...</div>
+    </div>
     <div class="admin-controls">
       <input type="text" id="donorName" placeholder="Donor Name" />
       <input type="number" id="donationAmount" placeholder="Amount" />
@@ -97,7 +103,9 @@
 
   <div class="section">
     <h3>📦 Expenses</h3>
-    <div id="expenseList"></div>
+    <div id="expenseList">
+      <div class="loading">Loading expenses list...</div>
+    </div>
     <div class="admin-controls">
       <input type="text" id="expenseName" placeholder="Expense Description" />
       <input type="number" id="expenseAmount" placeholder="Amount" />
@@ -112,116 +120,218 @@
   </div>
 
   <script>
-    let donors = JSON.parse(localStorage.getItem("donors")) || [];
-    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
-    const ADMIN_PASSWORD = "admin123"; // Change this to your preferred password
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDKMySTY1e7iTHziERxxNk8PJh_0BxRuX8",
+      authDomain: "donars-listmain.firebaseapp.com",
+      projectId: "donars-listmain",
+      storageBucket: "donars-listmain.appspot.com",
+      messagingSenderId: "161394187809",
+      appId: "1:161394187809:web:12a18ba01dd84734ab4d60",
+      measurementId: "G-RGHMRS5XWD",
+      databaseURL: "https://donars-listmain-default-rtdb.firebaseio.com/"
+    };
 
-    function updateDisplay() {
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // References to Firebase database paths
+    const donorsRef = database.ref('donors');
+    const expensesRef = database.ref('expenses');
+    const adminRef = database.ref('admin');
+
+    const ADMIN_PASSWORD = "admin123"; // Default password (stored in Firebase)
+    let isAdmin = false;
+
+    // Check if admin password exists in Firebase, if not set default
+    adminRef.once('value').then((snapshot) => {
+      if (!snapshot.exists()) {
+        adminRef.set({ password: ADMIN_PASSWORD });
+      }
+    });
+
+    // Real-time listeners for data changes
+    donorsRef.on('value', (snapshot) => {
+      const donors = snapshot.val() || {};
+      updateDonorsList(donors);
+      calculateTotals();
+    });
+
+    expensesRef.on('value', (snapshot) => {
+      const expenses = snapshot.val() || {};
+      updateExpensesList(expenses);
+      calculateTotals();
+    });
+
+    function updateDonorsList(donors) {
       let donorHTML = "";
-      let expenseHTML = "";
-      let totalDonations = 0;
-      let totalExpenses = 0;
-
-      donors.forEach((donor, i) => {
-        donorHTML += `
-          <div class="item">
-            <span>${donor.name}: ₹${donor.amount}</span>
-            <button onclick="editDonor(${i})" class="edit-btn admin-controls">Edit</button>
-            <button onclick="deleteDonor(${i})" class="admin-controls">Delete</button>
-          </div>`;
-        totalDonations += donor.amount;
-      });
-
-      expenses.forEach((expense, i) => {
-        expenseHTML += `
-          <div class="item">
-            <span>${expense.name}: ₹${expense.amount}</span>
-            <button onclick="editExpense(${i})" class="edit-btn admin-controls">Edit</button>
-            <button onclick="deleteExpense(${i})" class="admin-controls">Delete</button>
-          </div>`;
-        totalExpenses += expense.amount;
-      });
-
+      
+      if (Object.keys(donors).length === 0) {
+        donorHTML = "<div>No donors yet</div>";
+      } else {
+        Object.entries(donors).forEach(([id, donor]) => {
+          donorHTML += `
+            <div class="item">
+              <span>${donor.name}: ₹${donor.amount}</span>
+              ${isAdmin ? `
+                <button onclick="editDonor('${id}')" class="edit-btn">Edit</button>
+                <button onclick="deleteDonor('${id}')">Delete</button>
+              ` : ''}
+            </div>`;
+        });
+      }
+      
       document.getElementById("donorList").innerHTML = donorHTML;
+    }
+
+    function updateExpensesList(expenses) {
+      let expenseHTML = "";
+      
+      if (Object.keys(expenses).length === 0) {
+        expenseHTML = "<div>No expenses yet</div>";
+      } else {
+        Object.entries(expenses).forEach(([id, expense]) => {
+          expenseHTML += `
+            <div class="item">
+              <span>${expense.name}: ₹${expense.amount}</span>
+              ${isAdmin ? `
+                <button onclick="editExpense('${id}')" class="edit-btn">Edit</button>
+                <button onclick="deleteExpense('${id}')">Delete</button>
+              ` : ''}
+            </div>`;
+        });
+      }
+      
       document.getElementById("expenseList").innerHTML = expenseHTML;
-      document.getElementById("totalDonations").innerText = totalDonations;
-      document.getElementById("totalExpenses").innerText = totalExpenses;
-      document.getElementById("remaining").innerText = totalDonations - totalExpenses;
+    }
+
+    function calculateTotals() {
+      donorsRef.once('value').then((donorsSnapshot) => {
+        expensesRef.once('value').then((expensesSnapshot) => {
+          const donors = donorsSnapshot.val() || {};
+          const expenses = expensesSnapshot.val() || {};
+          
+          let totalDonations = 0;
+          let totalExpenses = 0;
+          
+          Object.values(donors).forEach(donor => {
+            totalDonations += donor.amount || 0;
+          });
+          
+          Object.values(expenses).forEach(expense => {
+            totalExpenses += expense.amount || 0;
+          });
+          
+          document.getElementById("totalDonations").innerText = totalDonations;
+          document.getElementById("totalExpenses").innerText = totalExpenses;
+          document.getElementById("remaining").innerText = totalDonations - totalExpenses;
+        });
+      });
     }
 
     function checkLogin() {
       const password = document.getElementById("adminPassword").value;
-      if (password === ADMIN_PASSWORD) {
-        document.body.classList.add("logged-in");
-        document.getElementById("loginForm").style.display = "none";
-        alert("Login successful! Admin controls enabled.");
-      } else {
-        alert("Incorrect password!");
-      }
-      document.getElementById("adminPassword").value = "";
+      
+      adminRef.once('value').then((snapshot) => {
+        const adminData = snapshot.val();
+        const correctPassword = adminData.password || ADMIN_PASSWORD;
+        
+        if (password === correctPassword) {
+          isAdmin = true;
+          document.body.classList.add("logged-in");
+          document.getElementById("loginForm").style.display = "none";
+          alert("Login successful! Admin controls enabled.");
+          // Refresh lists to show admin controls
+          donorsRef.once('value').then(updateDonorsList);
+          expensesRef.once('value').then(updateExpensesList);
+        } else {
+          alert("Incorrect password!");
+        }
+        document.getElementById("adminPassword").value = "";
+      });
     }
 
     function addDonor() {
-      let name = document.getElementById("donorName").value;
-      let amount = parseInt(document.getElementById("donationAmount").value);
+      const name = document.getElementById("donorName").value.trim();
+      const amount = parseInt(document.getElementById("donationAmount").value);
+      
       if (name && amount) {
-        donors.push({ name, amount });
-        localStorage.setItem("donors", JSON.stringify(donors));
-        document.getElementById("donorName").value = "";
-        document.getElementById("donationAmount").value = "";
-        updateDisplay();
+        const newDonorRef = donorsRef.push();
+        newDonorRef.set({
+          name: name,
+          amount: amount
+        }).then(() => {
+          document.getElementById("donorName").value = "";
+          document.getElementById("donationAmount").value = "";
+        });
+      } else {
+        alert("Please enter both name and amount");
       }
     }
 
-    function deleteDonor(index) {
+    function deleteDonor(id) {
       if (confirm("Are you sure you want to delete this donor?")) {
-        donors.splice(index, 1);
-        localStorage.setItem("donors", JSON.stringify(donors));
-        updateDisplay();
+        donorsRef.child(id).remove();
       }
     }
 
-    function editDonor(index) {
-      let newName = prompt("Edit Donor Name", donors[index].name);
-      let newAmount = prompt("Edit Amount", donors[index].amount);
-      if (newName && newAmount) {
-        donors[index] = { name: newName, amount: parseInt(newAmount) };
-        localStorage.setItem("donors", JSON.stringify(donors));
-        updateDisplay();
-      }
+    function editDonor(id) {
+      donorsRef.child(id).once('value').then((snapshot) => {
+        const donor = snapshot.val();
+        const newName = prompt("Edit Donor Name", donor.name);
+        const newAmount = prompt("Edit Amount", donor.amount);
+        
+        if (newName && newAmount) {
+          donorsRef.child(id).update({
+            name: newName,
+            amount: parseInt(newAmount)
+          });
+        }
+      });
     }
 
     function addExpense() {
-      let name = document.getElementById("expenseName").value;
-      let amount = parseInt(document.getElementById("expenseAmount").value);
+      const name = document.getElementById("expenseName").value.trim();
+      const amount = parseInt(document.getElementById("expenseAmount").value);
+      
       if (name && amount) {
-        expenses.push({ name, amount });
-        localStorage.setItem("expenses", JSON.stringify(expenses));
-        document.getElementById("expenseName").value = "";
-        document.getElementById("expenseAmount").value = "";
-        updateDisplay();
+        const newExpenseRef = expensesRef.push();
+        newExpenseRef.set({
+          name: name,
+          amount: amount
+        }).then(() => {
+          document.getElementById("expenseName").value = "";
+          document.getElementById("expenseAmount").value = "";
+        });
+      } else {
+        alert("Please enter both description and amount");
       }
     }
 
-    function deleteExpense(index) {
+    function deleteExpense(id) {
       if (confirm("Are you sure you want to delete this expense?")) {
-        expenses.splice(index, 1);
-        localStorage.setItem("expenses", JSON.stringify(expenses));
-        updateDisplay();
+        expensesRef.child(id).remove();
       }
     }
 
-    function editExpense(index) {
-      let newName = prompt("Edit Expense Name", expenses[index].name);
-      let newAmount = prompt("Edit Amount", expenses[index].amount);
-      if (newName && newAmount) {
-        expenses[index] = { name: newName, amount: parseInt(newAmount) };
-        localStorage.setItem("expenses", JSON.stringify(expenses));
-        updateDisplay();
-      }
+    function editExpense(id) {
+      expensesRef.child(id).once('value').then((snapshot) => {
+        const expense = snapshot.val();
+        const newName = prompt("Edit Expense Name", expense.name);
+        const newAmount = prompt("Edit Amount", expense.amount);
+        
+        if (newName && newAmount) {
+          expensesRef.child(id).update({
+            name: newName,
+            amount: parseInt(newAmount)
+          });
+        }
+      });
     }
 
-    updateDisplay();
+    // Initial load
+    calculateTotals();
   </script>
 </body>
 </html>
