@@ -75,6 +75,8 @@
       color: #666;
     }
   </style>
+
+  <!-- Firebase SDK (v9 compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
 </head>
@@ -90,9 +92,7 @@
 
   <div class="section">
     <h3>👥 Donors</h3>
-    <div id="donorList">
-      <div class="loading">Loading donors list...</div>
-    </div>
+    <div id="donorList"><div class="loading">Loading donors list...</div></div>
     <div class="admin-controls">
       <input type="text" id="donorName" placeholder="Donor Name" />
       <input type="number" id="donationAmount" placeholder="Amount" />
@@ -102,9 +102,7 @@
 
   <div class="section">
     <h3>📦 Expenses</h3>
-    <div id="expenseList">
-      <div class="loading">Loading expenses list...</div>
-    </div>
+    <div id="expenseList"><div class="loading">Loading expenses list...</div></div>
     <div class="admin-controls">
       <input type="text" id="expenseName" placeholder="Expense Description" />
       <input type="number" id="expenseAmount" placeholder="Amount" />
@@ -119,39 +117,41 @@
   </div>
 
   <script>
+    // ✅ Your Firebase config
     const firebaseConfig = {
-      apiKey: "AIzaSyDKMySTY1e7iTHziERxxNk8PJh_0BxRuX8",
-      authDomain: "donars-listmain.firebaseapp.com",
-      projectId: "donars-listmain",
-      storageBucket: "donars-listmain.appspot.com",
-      messagingSenderId: "161394187809",
-      appId: "1:161394187809:web:12a18ba01dd84734ab4d60",
-      measurementId: "G-RGHMRS5XWD",
-      databaseURL: "https://donars-listmain-default-rtdb.firebaseio.com/"
+      apiKey: "AIzaSyD5FnsO3_nd4PDy67hMC59u-A7br1rrxIQ",
+      authDomain: "funds-ff958.firebaseapp.com",
+      databaseURL: "https://funds-ff958-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "funds-ff958",
+      storageBucket: "funds-ff958.appspot.com",
+      messagingSenderId: "225221028217",
+      appId: "1:225221028217:web:f56a0878746f3a1819a7a8"
     };
 
+    // ✅ Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    const donorsRef = database.ref('donors');
-    const expensesRef = database.ref('expenses');
-    const adminRef = database.ref('admin');
+    const db = firebase.database();
 
-    let isAdmin = false;
+    const donorsRef = db.ref('donors');
+    const expensesRef = db.ref('expenses');
+    const adminRef = db.ref('admin');
+
     const DEFAULT_PASSWORD = "admin123";
+    let isAdmin = false;
 
-    // Set default admin password if not set
-    adminRef.once('value').then(snapshot => {
-      if (!snapshot.exists()) {
+    // ✅ Set default admin password if not set
+    adminRef.once('value').then(snap => {
+      if (!snap.exists()) {
         adminRef.set({ password: DEFAULT_PASSWORD });
       }
     });
 
-    // Login
+    // ✅ Handle login
     document.getElementById("loginBtn").addEventListener("click", () => {
-      const password = document.getElementById("adminPassword").value;
+      const entered = document.getElementById("adminPassword").value;
       adminRef.once('value').then(snapshot => {
-        const adminData = snapshot.val();
-        if (password === adminData.password) {
+        const data = snapshot.val();
+        if (entered === data.password) {
           isAdmin = true;
           document.body.classList.add("logged-in");
           document.getElementById("loginForm").style.display = "none";
@@ -164,52 +164,48 @@
       });
     });
 
-    // Add Donor
+    // ✅ Add Donor
     function addDonor() {
       const name = document.getElementById("donorName").value.trim();
       const amount = parseInt(document.getElementById("donationAmount").value);
-
       if (name && !isNaN(amount)) {
         donorsRef.push({ name, amount }).then(() => {
           document.getElementById("donorName").value = "";
           document.getElementById("donationAmount").value = "";
         });
       } else {
-        alert("Please enter both name and amount");
+        alert("Please enter valid name and amount");
       }
     }
 
-    // Add Expense
+    // ✅ Add Expense
     function addExpense() {
       const name = document.getElementById("expenseName").value.trim();
       const amount = parseInt(document.getElementById("expenseAmount").value);
-
       if (name && !isNaN(amount)) {
         expensesRef.push({ name, amount }).then(() => {
           document.getElementById("expenseName").value = "";
           document.getElementById("expenseAmount").value = "";
         });
       } else {
-        alert("Please enter both description and amount");
+        alert("Please enter valid description and amount");
       }
     }
 
-    // Listeners
+    // ✅ Realtime updates
     donorsRef.on('value', snapshot => {
-      const donors = snapshot.val() || {};
-      updateDonorsList(donors);
+      updateDonorsList(snapshot.val() || {});
       calculateTotals();
     });
 
     expensesRef.on('value', snapshot => {
-      const expenses = snapshot.val() || {};
-      updateExpensesList(expenses);
+      updateExpensesList(snapshot.val() || {});
       calculateTotals();
     });
 
-    function updateDonorsList(donors = {}) {
-      let html = Object.keys(donors).length ? "" : "<div>No donors yet</div>";
-      Object.entries(donors).forEach(([id, donor]) => {
+    function updateDonorsList(data = {}) {
+      let html = Object.keys(data).length ? "" : "<div>No donors yet</div>";
+      for (const [id, donor] of Object.entries(data)) {
         html += `
           <div class="item">
             <span>${donor.name}: ₹${donor.amount}</span>
@@ -218,13 +214,13 @@
               <button onclick="deleteDonor('${id}')">Delete</button>
             ` : ''}
           </div>`;
-      });
+      }
       document.getElementById("donorList").innerHTML = html;
     }
 
-    function updateExpensesList(expenses = {}) {
-      let html = Object.keys(expenses).length ? "" : "<div>No expenses yet</div>";
-      Object.entries(expenses).forEach(([id, expense]) => {
+    function updateExpensesList(data = {}) {
+      let html = Object.keys(data).length ? "" : "<div>No expenses yet</div>";
+      for (const [id, expense] of Object.entries(data)) {
         html += `
           <div class="item">
             <span>${expense.name}: ₹${expense.amount}</span>
@@ -233,15 +229,15 @@
               <button onclick="deleteExpense('${id}')">Delete</button>
             ` : ''}
           </div>`;
-      });
+      }
       document.getElementById("expenseList").innerHTML = html;
     }
 
     function calculateTotals() {
-      donorsRef.once('value').then(donorSnap => {
-        expensesRef.once('value').then(expenseSnap => {
-          const donors = donorSnap.val() || {};
-          const expenses = expenseSnap.val() || {};
+      donorsRef.once('value').then(dSnap => {
+        expensesRef.once('value').then(eSnap => {
+          const donors = dSnap.val() || {};
+          const expenses = eSnap.val() || {};
           let totalDonations = 0, totalExpenses = 0;
 
           Object.values(donors).forEach(d => totalDonations += d.amount || 0);
@@ -254,42 +250,35 @@
       });
     }
 
-    // Edit/Delete Donor
     function deleteDonor(id) {
-      if (confirm("Delete this donor?")) {
-        donorsRef.child(id).remove();
-      }
+      if (confirm("Delete this donor?")) donorsRef.child(id).remove();
     }
 
     function editDonor(id) {
-      donorsRef.child(id).once('value').then(snapshot => {
-        const donor = snapshot.val();
-        const name = prompt("Edit Donor Name", donor.name);
-        const amount = prompt("Edit Amount", donor.amount);
-        if (name && amount && !isNaN(parseInt(amount))) {
-          donorsRef.child(id).update({ name, amount: parseInt(amount) });
+      donorsRef.child(id).once('value').then(snap => {
+        const d = snap.val();
+        const newName = prompt("Edit Name", d.name);
+        const newAmt = prompt("Edit Amount", d.amount);
+        if (newName && newAmt && !isNaN(parseInt(newAmt))) {
+          donorsRef.child(id).update({ name: newName, amount: parseInt(newAmt) });
         }
       });
     }
 
-    // Edit/Delete Expense
     function deleteExpense(id) {
-      if (confirm("Delete this expense?")) {
-        expensesRef.child(id).remove();
-      }
+      if (confirm("Delete this expense?")) expensesRef.child(id).remove();
     }
 
     function editExpense(id) {
-      expensesRef.child(id).once('value').then(snapshot => {
-        const expense = snapshot.val();
-        const name = prompt("Edit Expense Name", expense.name);
-        const amount = prompt("Edit Amount", expense.amount);
-        if (name && amount && !isNaN(parseInt(amount))) {
-          expensesRef.child(id).update({ name, amount: parseInt(amount) });
+      expensesRef.child(id).once('value').then(snap => {
+        const e = snap.val();
+        const newName = prompt("Edit Description", e.name);
+        const newAmt = prompt("Edit Amount", e.amount);
+        if (newName && newAmt && !isNaN(parseInt(newAmt))) {
+          expensesRef.child(id).update({ name: newName, amount: parseInt(newAmt) });
         }
       });
     }
-
   </script>
 </body>
 </html>
