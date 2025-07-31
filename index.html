@@ -5,277 +5,223 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MMR Vinayaka Funds</title>
   <style>
-    /* [Previous CSS remains exactly the same] */
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    h2 {
+      color: #333;
+    }
+    .section {
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    button {
+      margin: 5px;
+      padding: 8px 12px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    input {
+      margin: 5px;
+      padding: 8px;
+      width: calc(100% - 16px);
+    }
+    .item {
+      margin: 5px 0;
+    }
+    .item span {
+      display: inline-block;
+      width: 60%;
+    }
+    .item button {
+      background: red;
+      margin-left: 10px;
+    }
+    .item .edit-btn {
+      background: #4CAF50;
+    }
+    #adminPanel {
+      display: none;
+      margin-top: 20px;
+    }
+    #loginForm {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      max-width: 300px;
+      margin: 20px auto;
+    }
+    #loginForm input {
+      width: calc(100% - 16px);
+      margin-bottom: 10px;
+    }
+    #loginBtn {
+      width: 100%;
+    }
+    .admin-controls {
+      display: none;
+    }
+    .logged-in .admin-controls {
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
 
-  <!-- [Previous HTML structure remains exactly the same] -->
+  <h2>🙏 MMR Vinayaka Donations</h2>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <div class="section">
+    <p><strong>Total Donations:</strong> ₹<span id="totalDonations">0</span></p>
+    <p><strong>Total Expenses:</strong> ₹<span id="totalExpenses">0</span></p>
+    <p><strong>Remaining:</strong> ₹<span id="remaining">0</span></p>
+  </div>
+
+  <div class="section">
+    <h3>👥 Donors</h3>
+    <div id="donorList"></div>
+    <div class="admin-controls">
+      <input type="text" id="donorName" placeholder="Donor Name" />
+      <input type="number" id="donationAmount" placeholder="Amount" />
+      <button onclick="addDonor()">Add Donor</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>📦 Expenses</h3>
+    <div id="expenseList"></div>
+    <div class="admin-controls">
+      <input type="text" id="expenseName" placeholder="Expense Description" />
+      <input type="number" id="expenseAmount" placeholder="Amount" />
+      <button onclick="addExpense()">Add Expense</button>
+    </div>
+  </div>
+
+  <div id="loginForm">
+    <h3>Admin Login</h3>
+    <input type="password" id="adminPassword" placeholder="Enter Password" />
+    <button id="loginBtn" onclick="checkLogin()">Login</button>
+  </div>
+
   <script>
-    // Debugging flag
-    const DEBUG = true;
-    
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDKMySTY1e7iTHziERxxNk8PJh_0BxRuX8",
-      authDomain: "donars-listmain.firebaseapp.com",
-      databaseURL: "https://donars-listmain-default-rtdb.firebaseio.com",
-      projectId: "donars-listmain",
-      storageBucket: "donars-listmain.appspot.com",
-      messagingSenderId: "161394187809",
-      appId: "1:161394187809:web:12a18ba01dd84734ab4d60",
-      measurementId: "G-RGHMRS5XWD"
-    };
+    let donors = JSON.parse(localStorage.getItem("donors")) || [];
+    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+    const ADMIN_PASSWORD = "admin123"; // Change this to your preferred password
 
-    try {
-      // Initialize Firebase
-      if (DEBUG) console.log("Initializing Firebase...");
-      firebase.initializeApp(firebaseConfig);
-      const database = firebase.database();
-      
-      // Database references
-      const donorsRef = database.ref('donors');
-      const expensesRef = database.ref('expenses');
-      const adminRef = database.ref('admin');
+    function updateDisplay() {
+      let donorHTML = "";
+      let expenseHTML = "";
+      let totalDonations = 0;
+      let totalExpenses = 0;
 
-      // Local data storage
-      let donors = [];
-      let expenses = [];
-      let ADMIN_PASSWORD = "admin123"; // Default password
-
-      // Wait for DOM to load
-      document.addEventListener('DOMContentLoaded', function() {
-        if (DEBUG) console.log("DOM fully loaded");
-        
-        // Get password from Firebase
-        adminRef.child('password').once('value').then((snapshot) => {
-          if (snapshot.exists()) {
-            ADMIN_PASSWORD = snapshot.val();
-            if (DEBUG) console.log("Admin password set to:", ADMIN_PASSWORD);
-          }
-          
-          // Set up event listeners AFTER password is loaded
-          setupEventListeners();
-          
-          // Set up real-time data listeners
-          setupDataListeners();
-          
-        }).catch(error => {
-          console.error("Error loading admin password:", error);
-          // Continue with default password if there's an error
-          setupEventListeners();
-          setupDataListeners();
-        });
+      donors.forEach((donor, i) => {
+        donorHTML += `
+          <div class="item">
+            <span>${donor.name}: ₹${donor.amount}</span>
+            <button onclick="editDonor(${i})" class="edit-btn admin-controls">Edit</button>
+            <button onclick="deleteDonor(${i})" class="admin-controls">Delete</button>
+          </div>`;
+        totalDonations += donor.amount;
       });
 
-      function setupEventListeners() {
-        if (DEBUG) console.log("Setting up event listeners...");
-        
-        // Login button
-        document.getElementById('loginBtn').addEventListener('click', function() {
-          const password = document.getElementById("adminPassword").value;
-          const errorElement = document.getElementById("loginError");
-          
-          if (!password) {
-            errorElement.textContent = "Please enter a password";
-            return;
-          }
-          
-          if (password === ADMIN_PASSWORD) {
-            document.body.classList.add("logged-in");
-            document.getElementById("loginForm").style.display = "none";
-            errorElement.textContent = "";
-            if (DEBUG) console.log("Login successful");
-          } else {
-            errorElement.textContent = "Incorrect password!";
-          }
-        });
+      expenses.forEach((expense, i) => {
+        expenseHTML += `
+          <div class="item">
+            <span>${expense.name}: ₹${expense.amount}</span>
+            <button onclick="editExpense(${i})" class="edit-btn admin-controls">Edit</button>
+            <button onclick="deleteExpense(${i})" class="admin-controls">Delete</button>
+          </div>`;
+        totalExpenses += expense.amount;
+      });
 
-        // Add Donor button
-        document.getElementById('addDonorBtn').addEventListener('click', function() {
-          const name = document.getElementById("donorName").value.trim();
-          const amount = parseInt(document.getElementById("donationAmount").value);
-          const errorElement = document.getElementById("donorError");
-          const successElement = document.getElementById("donorSuccess");
-          
-          // Validation
-          if (!name) {
-            errorElement.textContent = "Please enter donor name";
-            return;
-          }
-          if (isNaN(amount) || amount <= 0) {
-            errorElement.textContent = "Please enter a valid amount";
-            return;
-          }
-          
-          // Add to Firebase
-          donorsRef.push({
-            name: name,
-            amount: amount,
-            timestamp: Date.now()
-          }).then(() => {
-            document.getElementById("donorName").value = "";
-            document.getElementById("donationAmount").value = "";
-            successElement.textContent = "Donor added successfully!";
-            setTimeout(() => successElement.textContent = "", 3000);
-          }).catch(error => {
-            errorElement.textContent = "Error adding donor: " + error.message;
-          });
-        });
-
-        // Add Expense button
-        document.getElementById('addExpenseBtn').addEventListener('click', function() {
-          const name = document.getElementById("expenseName").value.trim();
-          const amount = parseInt(document.getElementById("expenseAmount").value);
-          const errorElement = document.getElementById("expenseError");
-          const successElement = document.getElementById("expenseSuccess");
-          
-          // Validation
-          if (!name) {
-            errorElement.textContent = "Please enter expense description";
-            return;
-          }
-          if (isNaN(amount) || amount <= 0) {
-            errorElement.textContent = "Please enter a valid amount";
-            return;
-          }
-          
-          // Add to Firebase
-          expensesRef.push({
-            name: name,
-            amount: amount,
-            timestamp: Date.now()
-          }).then(() => {
-            document.getElementById("expenseName").value = "";
-            document.getElementById("expenseAmount").value = "";
-            successElement.textContent = "Expense added successfully!";
-            setTimeout(() => successElement.textContent = "", 3000);
-          }).catch(error => {
-            errorElement.textContent = "Error adding expense: " + error.message;
-          });
-        });
-      }
-
-      function setupDataListeners() {
-        if (DEBUG) console.log("Setting up data listeners...");
-        
-        // Donors listener
-        donorsRef.on('value', (snapshot) => {
-          const data = snapshot.val();
-          donors = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value })) : [];
-          updateDisplay();
-        });
-
-        // Expenses listener
-        expensesRef.on('value', (snapshot) => {
-          const data = snapshot.val();
-          expenses = data ? Object.entries(data).map(([key, value]) => ({ id: key, ...value })) : [];
-          updateDisplay();
-        });
-      }
-
-      function updateDisplay() {
-        updateDonorList();
-        updateExpenseList();
-        updateTotals();
-        setupDynamicButtonListeners();
-      }
-
-      function updateDonorList() {
-        let donorHTML = "";
-        donors.forEach((donor) => {
-          donorHTML += `
-            <div class="item" data-id="${donor.id}">
-              <span>${donor.name}: ₹${donor.amount}</span>
-              <div>
-                <button class="edit-btn admin-controls">Edit</button>
-                <button class="delete-btn admin-controls">Delete</button>
-              </div>
-            </div>`;
-        });
-        document.getElementById("donorList").innerHTML = donorHTML || "<span class='loading'>No donors yet</span>";
-      }
-
-      function updateExpenseList() {
-        let expenseHTML = "";
-        expenses.forEach((expense) => {
-          expenseHTML += `
-            <div class="item" data-id="${expense.id}">
-              <span>${expense.name}: ₹${expense.amount}</span>
-              <div>
-                <button class="edit-btn admin-controls">Edit</button>
-                <button class="delete-btn admin-controls">Delete</button>
-              </div>
-            </div>`;
-        });
-        document.getElementById("expenseList").innerHTML = expenseHTML || "<span class='loading'>No expenses yet</span>";
-      }
-
-      function updateTotals() {
-        const totalDonations = donors.reduce((sum, donor) => sum + (donor.amount || 0), 0);
-        const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
-        
-        document.getElementById("totalDonations").textContent = totalDonations;
-        document.getElementById("totalExpenses").textContent = totalExpenses;
-        document.getElementById("remaining").textContent = totalDonations - totalExpenses;
-      }
-
-      function setupDynamicButtonListeners() {
-        // Edit buttons
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-          btn.onclick = function(e) {
-            const itemId = this.closest('.item').dataset.id;
-            const isDonor = this.closest('#donorList');
-            const item = isDonor 
-              ? donors.find(d => d.id === itemId)
-              : expenses.find(e => e.id === itemId);
-            
-            if (!item) return;
-            
-            const newName = prompt("Edit Name", item.name);
-            if (newName === null) return;
-            
-            const newAmount = prompt("Edit Amount", item.amount);
-            if (newAmount === null) return;
-            
-            if (newName && newAmount && !isNaN(newAmount)) {
-              const ref = isDonor ? donorsRef : expensesRef;
-              ref.child(itemId).update({
-                name: newName.trim(),
-                amount: parseInt(newAmount),
-                timestamp: Date.now()
-              });
-            }
-          };
-        });
-
-        // Delete buttons
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-          btn.onclick = function(e) {
-            const itemId = this.closest('.item').dataset.id;
-            const isDonor = this.closest('#donorList');
-            const item = isDonor 
-              ? donors.find(d => d.id === itemId)
-              : expenses.find(e => e.id === itemId);
-            
-            if (!item) return;
-            
-            if (confirm(`Are you sure you want to delete ${isDonor ? 'donor' : 'expense'} ${item.name}?`)) {
-              const ref = isDonor ? donorsRef : expensesRef;
-              ref.child(itemId).remove();
-            }
-          };
-        });
-      }
-
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-      alert("Application error. Please check console for details.");
+      document.getElementById("donorList").innerHTML = donorHTML;
+      document.getElementById("expenseList").innerHTML = expenseHTML;
+      document.getElementById("totalDonations").innerText = totalDonations;
+      document.getElementById("totalExpenses").innerText = totalExpenses;
+      document.getElementById("remaining").innerText = totalDonations - totalExpenses;
     }
+
+    function checkLogin() {
+      const password = document.getElementById("adminPassword").value;
+      if (password === ADMIN_PASSWORD) {
+        document.body.classList.add("logged-in");
+        document.getElementById("loginForm").style.display = "none";
+        alert("Login successful! Admin controls enabled.");
+      } else {
+        alert("Incorrect password!");
+      }
+      document.getElementById("adminPassword").value = "";
+    }
+
+    function addDonor() {
+      let name = document.getElementById("donorName").value;
+      let amount = parseInt(document.getElementById("donationAmount").value);
+      if (name && amount) {
+        donors.push({ name, amount });
+        localStorage.setItem("donors", JSON.stringify(donors));
+        document.getElementById("donorName").value = "";
+        document.getElementById("donationAmount").value = "";
+        updateDisplay();
+      }
+    }
+
+    function deleteDonor(index) {
+      if (confirm("Are you sure you want to delete this donor?")) {
+        donors.splice(index, 1);
+        localStorage.setItem("donors", JSON.stringify(donors));
+        updateDisplay();
+      }
+    }
+
+    function editDonor(index) {
+      let newName = prompt("Edit Donor Name", donors[index].name);
+      let newAmount = prompt("Edit Amount", donors[index].amount);
+      if (newName && newAmount) {
+        donors[index] = { name: newName, amount: parseInt(newAmount) };
+        localStorage.setItem("donors", JSON.stringify(donors));
+        updateDisplay();
+      }
+    }
+
+    function addExpense() {
+      let name = document.getElementById("expenseName").value;
+      let amount = parseInt(document.getElementById("expenseAmount").value);
+      if (name && amount) {
+        expenses.push({ name, amount });
+        localStorage.setItem("expenses", JSON.stringify(expenses));
+        document.getElementById("expenseName").value = "";
+        document.getElementById("expenseAmount").value = "";
+        updateDisplay();
+      }
+    }
+
+    function deleteExpense(index) {
+      if (confirm("Are you sure you want to delete this expense?")) {
+        expenses.splice(index, 1);
+        localStorage.setItem("expenses", JSON.stringify(expenses));
+        updateDisplay();
+      }
+    }
+
+    function editExpense(index) {
+      let newName = prompt("Edit Expense Name", expenses[index].name);
+      let newAmount = prompt("Edit Amount", expenses[index].amount);
+      if (newName && newAmount) {
+        expenses[index] = { name: newName, amount: parseInt(newAmount) };
+        localStorage.setItem("expenses", JSON.stringify(expenses));
+        updateDisplay();
+      }
+    }
+
+    updateDisplay();
   </script>
 </body>
 </html>
